@@ -7,16 +7,72 @@
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
-body{background:#0a0d0a;color:#9cff57}
-header{background:#111411;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2aff00}
-.write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
 
-.category-bar{display:flex;gap:10px;padding:15px 40px;border-bottom:1px solid rgba(0,255,0,0.2);flex-wrap:wrap;}
-.category-btn{background:transparent;border:1px solid rgba(0,255,0,0.4);color:#9cff57;padding:5px 12px;cursor:pointer;font-size:13px;}
-.category-btn.active{background:#1a2a1a;border-color:#2aff00;}
+/* ===== 헤더 ===== */
+header{
+  background:#111411;
+  padding:20px 40px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #2aff00;
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+header h1{color:#9cff57}
+.write-btn{
+  background:#1a2a1a;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:8px 14px;
+  cursor:pointer;
+  font-size:14px;
+}
 
-.container{max-width:1000px;margin:40px auto;padding:0 20px}
-.card{background:#111611;padding:30px;margin-bottom:30px;border:1px solid rgba(0,255,0,0.2);cursor:pointer}
+/* ===== 카테고리 탭 ===== */
+.category-bar{
+  display:flex;
+  gap:10px;
+  padding:12px 40px;
+  background:#0e110e;
+  border-bottom:1px solid #2aff00;
+  position:sticky;
+  top:72px; /* 헤더 높이만큼 아래 고정 */
+  z-index:90;
+  overflow-x:auto;
+}
+.category-bar::-webkit-scrollbar{height:6px}
+.category-bar::-webkit-scrollbar-thumb{background:#2aff00;border-radius:3px}
+.category-btn{
+  white-space:nowrap;
+  padding:6px 16px;
+  font-size:14px;
+  border:1px solid rgba(0,255,0,0.4);
+  color:#9cff57;
+  background:transparent;
+  cursor:pointer;
+  transition:0.2s;
+}
+.category-btn.active{
+  background:#2aff00;
+  color:#000;
+  border-color:#2aff00;
+}
+
+/* ===== 본문 ===== */
+.container{
+  max-width:1000px;
+  margin:20px auto;
+  padding:0 20px;
+}
+.card{
+  background:#111611;
+  padding:28px;
+  margin-bottom:28px;
+  border:1px solid rgba(0,255,0,0.2);
+  cursor:pointer;
+}
 
 textarea,input,select{
   width:100%;
@@ -27,15 +83,26 @@ textarea,input,select{
   padding:8px;
 }
 
-.category-tag{font-size:12px;opacity:0.7;margin-bottom:10px;}
-.action-btn{margin-top:15px;background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px;cursor:pointer;}
+.category-tag{
+  font-size:12px;
+  opacity:0.7;
+  margin-bottom:10px;
+}
+.action-btn{
+  margin-top:15px;
+  background:#1a2a1a;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:8px;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
 
 <header>
-<h1>Nuclear Community</h1>
-<button class="write-btn" onclick="openForm()">게시하기</button>
+  <h1>Nuclear Community</h1>
+  <button class="write-btn" onclick="openForm()">게시하기</button>
 </header>
 
 <div class="category-bar" id="categoryBar"></div>
@@ -66,15 +133,15 @@ let allPosts = {};
 let selectedPostKey = null;
 let currentCategory = "전체";
 
+window.addEventListener('hashchange',handleRouting);
+
 async function hashPassword(password){
   const encoder=new TextEncoder();
   const data=encoder.encode(password);
   const hashBuffer=await crypto.subtle.digest('SHA-256',data);
-  const hashArray=Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-
-window.addEventListener('hashchange',handleRouting);
 
 function handleRouting(){
   const hash=location.hash.replace('#','');
@@ -164,7 +231,7 @@ function renderWritePage(){
 
     <input id='title' placeholder='제목'>
     <input id='nickname' placeholder='닉네임'>
-    <input id='password' type='password' placeholder='삭제/수정용 비밀번호'>
+    <input id='password' type='password' placeholder='삭제용 비밀번호'>
     <textarea id='content' rows='6' placeholder='내용'></textarea>
     <button class="action-btn" onclick='submitPost()'>등록</button>
   </div>`;
