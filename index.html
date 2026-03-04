@@ -39,7 +39,6 @@ footer{text-align:center;padding:40px 0;opacity:0.6}
 </header>
 
 <div class="container" id="postList"></div>
-
 <footer>© 2033 Nuclear Community</footer>
 
 <script type="module">
@@ -47,14 +46,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
+  apiKey: "YOUR_KEY",
   authDomain: "community-61897.firebaseapp.com",
   databaseURL: "https://community-61897-default-rtdb.firebaseio.com",
   projectId: "community-61897",
   storageBucket: "community-61897.firebasestorage.app",
   messagingSenderId: "1081865580697",
-  appId: "1:1081865580697:web:6890110c8db86e0f97c808",
-  measurementId: "G-8NMHM0H7YQ"
+  appId: "1:1081865580697:web:6890110c8db86e0f97c808"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -84,26 +82,6 @@ function handleRouting(){
 
 window.openForm = ()=> location.hash='write';
 
-window.submitPost = async function(){
-  const title = titleEl.value.trim();
-  const nickname = nickEl.value.trim();
-  const password = passEl.value;
-  const content = contentEl.value.trim();
-
-  if(!title||!nickname||!password||!content) return alert('모든 항목 입력');
-
-  await push(postsRef,{
-    title,
-    nickname,
-    password: await hashPassword(password),
-    content,
-    date:new Date().toLocaleDateString(),
-    comments:{}
-  });
-
-  location.hash='';
-}
-
 onValue(postsRef,(snap)=>{
   allPosts = snap.val() || {};
   render();
@@ -112,25 +90,6 @@ onValue(postsRef,(snap)=>{
 function render(){
   if(selectedPostKey) renderDetail(selectedPostKey);
   else renderList();
-}
-
-function renderWritePage(){
-  const container=document.getElementById('postList');
-  container.innerHTML=`
-  <div class='card'>
-    <button onclick="location.hash=''">← 돌아가기</button>
-    <h2>게시글 작성</h2>
-    <input id='title' placeholder='제목'>
-    <input id='nickname' placeholder='닉네임'>
-    <input id='password' type='password' placeholder='비밀번호'>
-    <textarea id='content' rows='6' placeholder='내용'></textarea>
-    <button onclick='submitPost()'>등록</button>
-  </div>`;
-
-  window.titleEl = document.getElementById('title');
-  window.nickEl = document.getElementById('nickname');
-  window.passEl = document.getElementById('password');
-  window.contentEl = document.getElementById('content');
 }
 
 function renderList(){
@@ -161,7 +120,6 @@ function renderDetail(key){
       <div class='comment'>
         <b>${c.nickname}</b>
         <div>${c.text}</div>
-        <button onclick="showCommentEdit('${key}','${cid}')">수정</button>
         <button onclick="showCommentDelete('${key}','${cid}')">삭제</button>
         <div id='comment-edit-${cid}'></div>
       `;
@@ -179,8 +137,9 @@ function renderDetail(key){
         });
       }
 
-      commentsHTML+=`<button onclick="showReplyForm('${key}','${cid}')">답글</button>
-      <div id='reply-form-${cid}'></div>
+      commentsHTML+=`
+        <button onclick="showReplyForm('${key}','${cid}')">답글</button>
+        <div id='reply-form-${cid}'></div>
       </div>`;
     });
   }
@@ -190,9 +149,6 @@ function renderDetail(key){
     <button onclick="location.hash=''">← 돌아가기</button>
     <h2>${post.title}</h2>
     <div>${post.content}</div>
-    <button onclick="showPostEdit('${key}')">수정</button>
-    <button onclick="showPostDelete('${key}')">삭제</button>
-    <div id='post-edit'></div>
     <hr>
     <h3>댓글</h3>
     ${commentsHTML}
@@ -203,78 +159,79 @@ function renderDetail(key){
   </div>`;
 }
 
-window.showPostDelete=function(key){
-  document.getElementById('post-edit').innerHTML=`
-    <input id='del_pass' type='password' placeholder='비밀번호'>
-    <button onclick="deletePost('${key}')">확인 삭제</button>`;
-}
-
-window.deletePost=async function(key){
-  const input=document.getElementById('del_pass').value;
-  if(await hashPassword(input)!==allPosts[key].password) return alert('비밀번호 불일치');
-  remove(ref(db,'posts/'+key));
-  location.hash='';
-}
-
-window.showPostEdit=function(key){
-  document.getElementById('post-edit').innerHTML=`
-    <input id='edit_pass' type='password' placeholder='비밀번호'>
-    <button onclick="confirmPostEdit('${key}')">확인</button>`;
-}
-
-window.confirmPostEdit=async function(key){
-  const input=document.getElementById('edit_pass').value;
-  if(await hashPassword(input)!==allPosts[key].password) return alert('비밀번호 불일치');
-
-  document.getElementById('post-edit').innerHTML=`
-    <input id='edit_title' value="${allPosts[key].title}">
-    <textarea id='edit_content'>${allPosts[key].content}</textarea>
-    <button onclick="savePostEdit('${key}')">저장</button>`;
-}
-
-window.savePostEdit=function(key){
-  update(ref(db,'posts/'+key),{
-    title:document.getElementById('edit_title').value,
-    content:document.getElementById('edit_content').value
-  });
-  location.hash='post-'+key;
-}
-
 window.addComment=async function(postKey){
   const nick=c_nick.value;
   const pass=c_pass.value;
   const text=c_text.value;
   if(!nick||!pass||!text) return alert('입력');
-
   const newRef=push(ref(db,'posts/'+postKey+'/comments'));
   await update(newRef,{ nickname:nick, password:await hashPassword(pass), text, replies:{} });
-}
+};
 
-window.showCommentDelete=function(postKey,commentKey){
-  document.getElementById('comment-edit-'+commentKey).innerHTML=`
-    <input id='cd_pass-${commentKey}' type='password' placeholder='비밀번호'>
-    <button onclick="deleteComment('${postKey}','${commentKey}')">삭제</button>`;
-}
+window.showReplyForm = function(postKey, commentKey){
+  const target = document.getElementById('reply-form-'+commentKey);
+  target.innerHTML = `
+    <input id='r_nick-${commentKey}' placeholder='닉네임'>
+    <input id='r_pass-${commentKey}' type='password' placeholder='비밀번호'>
+    <textarea id='r_text-${commentKey}' rows='2' placeholder='답글'></textarea>
+    <button onclick="addReply('${postKey}','${commentKey}')">등록</button>
+  `;
+};
 
-window.deleteComment=async function(postKey,commentKey){
-  const input=document.getElementById('cd_pass-'+commentKey).value;
-  if(await hashPassword(input)!==allPosts[postKey].comments[commentKey].password) return alert('불일치');
-  remove(ref(db,'posts/'+postKey+'/comments/'+commentKey));
-}
+window.addReply = async function(postKey, commentKey){
+  const nick = document.getElementById('r_nick-'+commentKey).value;
+  const pass = document.getElementById('r_pass-'+commentKey).value;
+  const text = document.getElementById('r_text-'+commentKey).value;
+  if(!nick || !pass || !text) return alert('입력');
+  const replyRef = push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'));
+  await update(replyRef,{
+    nickname: nick,
+    password: await hashPassword(pass),
+    text: text
+  });
+};
+
+window.showReplyEdit = function(postKey, commentKey, replyKey){
+  const target = document.getElementById('reply-edit-'+replyKey);
+  target.innerHTML = `
+    <input id='re_pass-${replyKey}' type='password' placeholder='비밀번호'>
+    <button onclick="confirmReplyEdit('${postKey}','${commentKey}','${replyKey}')">확인</button>
+  `;
+};
+
+window.confirmReplyEdit = async function(postKey, commentKey, replyKey){
+  const input = document.getElementById('re_pass-'+replyKey).value;
+  const savedHash = allPosts[postKey].comments[commentKey].replies[replyKey].password;
+  if(await hashPassword(input) !== savedHash)
+    return alert('비밀번호 불일치');
+
+  const reply = allPosts[postKey].comments[commentKey].replies[replyKey];
+  document.getElementById('reply-edit-'+replyKey).innerHTML = `
+    <textarea id='edit_reply_text-${replyKey}'>${reply.text}</textarea>
+    <button onclick="saveReplyEdit('${postKey}','${commentKey}','${replyKey}')">저장</button>
+  `;
+};
+
+window.saveReplyEdit = function(postKey, commentKey, replyKey){
+  const newText = document.getElementById('edit_reply_text-'+replyKey).value;
+  update(
+    ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey),
+    { text: newText }
+  );
+};
 
 window.showReplyDelete=function(postKey,commentKey,replyKey){
   document.getElementById('reply-edit-'+replyKey).innerHTML=`
     <input id='rd_pass-${replyKey}' type='password' placeholder='비밀번호'>
     <button onclick="deleteReply('${postKey}','${commentKey}','${replyKey}')">삭제</button>`;
-}
+};
 
 window.deleteReply=async function(postKey,commentKey,replyKey){
   const input=document.getElementById('rd_pass-'+replyKey).value;
-  if(await hashPassword(input)!==allPosts[postKey].comments[commentKey].replies[replyKey].password) return alert('불일치');
+  if(await hashPassword(input)!==allPosts[postKey].comments[commentKey].replies[replyKey].password)
+    return alert('불일치');
   remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey));
-}
-
+};
 </script>
-
 </body>
 </html>
