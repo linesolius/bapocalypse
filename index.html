@@ -12,29 +12,54 @@ header{background:#111411;padding:20px 40px;display:flex;justify-content:space-b
 header h1{letter-spacing:2px;text-shadow:0 0 8px rgba(0,255,0,0.8)}
 nav button{background:none;border:1px solid rgba(0,255,0,0.2);color:#7dff3a;margin-right:8px;padding:6px 10px;cursor:pointer}
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
+
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
-.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2)}
-.meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
-textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px;outline:none}
+.card{background:#111611;padding:30px;margin-bottom:30px;border:1px solid rgba(0,255,0,0.2)}
+
+textarea,input{
+  width:100%;
+  margin-top:10px;
+  background:#0f140f;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:8px;
+  outline:none
+}
+
 button{cursor:pointer}
-.comment{margin-top:15px;padding:10px;border:1px solid rgba(0,255,0,0.2)}
-.reply{margin-left:20px;margin-top:10px;border-left:2px solid #2aff00;padding-left:10px}
+
+.comment{margin-top:25px;padding:15px;border:1px solid rgba(0,255,0,0.2)}
+.reply{margin-left:20px;margin-top:15px;border-left:2px solid #2aff00;padding-left:15px}
+
 footer{text-align:center;padding:40px 0;opacity:0.6}
+
+/* 가독성 */
+.card h2{margin-bottom:25px;}
+.card > div{margin-bottom:25px;}
+.card hr{margin:35px 0;}
+.card div{line-height:1.6;}
+
+/* 상단 버튼 */
+.top-actions{display:flex;gap:10px;margin-bottom:20px;}
+.action-btn{
+  background:transparent;
+  border:1px solid rgba(0,255,0,0.4);
+  color:#9cff57;
+  padding:6px 12px;
+  font-size:13px;
+  transition:all 0.2s ease;
+}
+.action-btn:hover{
+  background:#1a2a1a;
+  border-color:#2aff00;
+  box-shadow:0 0 8px rgba(0,255,0,0.6);
+}
 </style>
 </head>
 <body>
 
 <header>
 <h1>Nuclear Community</h1>
-<nav id="categoryNav">
-<button onclick="filterCategory('all')">전체</button>
-<button onclick="filterCategory('공지')">공지</button>
-<button onclick="filterCategory('잡담')">잡담</button>
-<button onclick="filterCategory('정보')">정보</button>
-<button onclick="filterCategory('질문')">질문</button>
-<button onclick="filterCategory('거래')">거래</button>
-<button onclick="filterCategory('도움')">도움</button>
-</nav>
 <button class="write-btn" onclick="openForm()">게시하기</button>
 </header>
 
@@ -57,33 +82,33 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const postsRef = ref(db, 'posts');
+const postsRef = ref(db,'posts');
 
-let allPosts = {};
-let selectedPostKey = null;
+let allPosts={};
+let selectedPostKey=null;
 
-window.addEventListener('hashchange', handleRouting);
+window.addEventListener('hashchange',handleRouting);
 
 async function hashPassword(password){
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+  const encoder=new TextEncoder();
+  const data=encoder.encode(password);
+  const hashBuffer=await crypto.subtle.digest('SHA-256',data);
+  const hashArray=Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 function handleRouting(){
-  const hash = location.hash.replace('#','');
-  if(hash === 'write') return renderWritePage();
-  if(hash.startsWith('post-')) selectedPostKey = hash.replace('post-','');
-  else selectedPostKey = null;
+  const hash=location.hash.replace('#','');
+  if(hash==='write') return renderWritePage();
+  if(hash.startsWith('post-')) selectedPostKey=hash.replace('post-','');
+  else selectedPostKey=null;
   render();
 }
 
-window.openForm = ()=> location.hash='write';
+window.openForm=()=>location.hash='write';
 
 onValue(postsRef,(snap)=>{
-  allPosts = snap.val() || {};
+  allPosts=snap.val()||{};
   render();
 });
 
@@ -95,18 +120,53 @@ function render(){
 function renderList(){
   const container=document.getElementById('postList');
   container.innerHTML='';
-
   Object.entries(allPosts).reverse().forEach(([key,post])=>{
     const div=document.createElement('div');
     div.className='card';
-    div.innerHTML=`<h3>${post.title}</h3><div class='meta'>${post.nickname}</div>`;
+    div.innerHTML=`<h3>${post.title}</h3><div>${post.nickname}</div>`;
     div.onclick=()=>location.hash='post-'+key;
     container.appendChild(div);
   });
+}
 
-  if(container.innerHTML===''){
-    container.innerHTML="<div style='text-align:center;margin-top:120px;'>게시글이 없습니다.</div>";
-  }
+function renderWritePage(){
+  const container=document.getElementById('postList');
+  container.innerHTML=`
+  <div class='card'>
+    <div class="top-actions">
+      <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
+    </div>
+    <h2>게시글 작성</h2>
+    <input id='title' placeholder='제목'>
+    <input id='nickname' placeholder='닉네임'>
+    <input id='password' type='password' placeholder='비밀번호'>
+    <textarea id='content' rows='6' placeholder='내용'></textarea>
+    <button class="action-btn" onclick='submitPost()'>등록</button>
+  </div>`;
+
+  window.titleEl=document.getElementById('title');
+  window.nickEl=document.getElementById('nickname');
+  window.passEl=document.getElementById('password');
+  window.contentEl=document.getElementById('content');
+}
+
+window.submitPost=async function(){
+  const title=titleEl.value.trim();
+  const nickname=nickEl.value.trim();
+  const password=passEl.value;
+  const content=contentEl.value.trim();
+  if(!title||!nickname||!password||!content) return alert('모든 항목 입력');
+
+  await push(postsRef,{
+    title,
+    nickname,
+    password:await hashPassword(password),
+    content,
+    date:new Date().toLocaleDateString(),
+    comments:{}
+  });
+
+  location.hash='';
 }
 
 function renderDetail(key){
@@ -120,33 +180,25 @@ function renderDetail(key){
       <div class='comment'>
         <b>${c.nickname}</b>
         <div>${c.text}</div>
-        <button onclick="showCommentDelete('${key}','${cid}')">삭제</button>
-        <div id='comment-edit-${cid}'></div>
       `;
-
       if(c.replies){
         Object.entries(c.replies).forEach(([rid,r])=>{
           commentsHTML+=`
           <div class='reply'>
             <b>${r.nickname}</b>
             <div>${r.text}</div>
-            <button onclick="showReplyEdit('${key}','${cid}','${rid}')">수정</button>
-            <button onclick="showReplyDelete('${key}','${cid}','${rid}')">삭제</button>
-            <div id='reply-edit-${rid}'></div>
           </div>`;
         });
       }
-
-      commentsHTML+=`
-        <button onclick="showReplyForm('${key}','${cid}')">답글</button>
-        <div id='reply-form-${cid}'></div>
-      </div>`;
+      commentsHTML+=`</div>`;
     });
   }
 
   container.innerHTML=`
   <div class='card'>
-    <button onclick="location.hash=''">← 돌아가기</button>
+    <div class="top-actions">
+      <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
+    </div>
     <h2>${post.title}</h2>
     <div>${post.content}</div>
     <hr>
@@ -155,7 +207,7 @@ function renderDetail(key){
     <input id='c_nick' placeholder='닉네임'>
     <input id='c_pass' type='password' placeholder='비밀번호'>
     <textarea id='c_text' rows='3' placeholder='댓글'></textarea>
-    <button onclick="addComment('${key}')">댓글 등록</button>
+    <button class="action-btn" onclick="addComment('${key}')">댓글 등록</button>
   </div>`;
 }
 
@@ -164,74 +216,16 @@ window.addComment=async function(postKey){
   const pass=c_pass.value;
   const text=c_text.value;
   if(!nick||!pass||!text) return alert('입력');
+
   const newRef=push(ref(db,'posts/'+postKey+'/comments'));
-  await update(newRef,{ nickname:nick, password:await hashPassword(pass), text, replies:{} });
-};
-
-window.showReplyForm = function(postKey, commentKey){
-  const target = document.getElementById('reply-form-'+commentKey);
-  target.innerHTML = `
-    <input id='r_nick-${commentKey}' placeholder='닉네임'>
-    <input id='r_pass-${commentKey}' type='password' placeholder='비밀번호'>
-    <textarea id='r_text-${commentKey}' rows='2' placeholder='답글'></textarea>
-    <button onclick="addReply('${postKey}','${commentKey}')">등록</button>
-  `;
-};
-
-window.addReply = async function(postKey, commentKey){
-  const nick = document.getElementById('r_nick-'+commentKey).value;
-  const pass = document.getElementById('r_pass-'+commentKey).value;
-  const text = document.getElementById('r_text-'+commentKey).value;
-  if(!nick || !pass || !text) return alert('입력');
-  const replyRef = push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'));
-  await update(replyRef,{
-    nickname: nick,
-    password: await hashPassword(pass),
-    text: text
+  await update(newRef,{
+    nickname:nick,
+    password:await hashPassword(pass),
+    text,
+    replies:{}
   });
-};
-
-window.showReplyEdit = function(postKey, commentKey, replyKey){
-  const target = document.getElementById('reply-edit-'+replyKey);
-  target.innerHTML = `
-    <input id='re_pass-${replyKey}' type='password' placeholder='비밀번호'>
-    <button onclick="confirmReplyEdit('${postKey}','${commentKey}','${replyKey}')">확인</button>
-  `;
-};
-
-window.confirmReplyEdit = async function(postKey, commentKey, replyKey){
-  const input = document.getElementById('re_pass-'+replyKey).value;
-  const savedHash = allPosts[postKey].comments[commentKey].replies[replyKey].password;
-  if(await hashPassword(input) !== savedHash)
-    return alert('비밀번호 불일치');
-
-  const reply = allPosts[postKey].comments[commentKey].replies[replyKey];
-  document.getElementById('reply-edit-'+replyKey).innerHTML = `
-    <textarea id='edit_reply_text-${replyKey}'>${reply.text}</textarea>
-    <button onclick="saveReplyEdit('${postKey}','${commentKey}','${replyKey}')">저장</button>
-  `;
-};
-
-window.saveReplyEdit = function(postKey, commentKey, replyKey){
-  const newText = document.getElementById('edit_reply_text-'+replyKey).value;
-  update(
-    ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey),
-    { text: newText }
-  );
-};
-
-window.showReplyDelete=function(postKey,commentKey,replyKey){
-  document.getElementById('reply-edit-'+replyKey).innerHTML=`
-    <input id='rd_pass-${replyKey}' type='password' placeholder='비밀번호'>
-    <button onclick="deleteReply('${postKey}','${commentKey}','${replyKey}')">삭제</button>`;
-};
-
-window.deleteReply=async function(postKey,commentKey,replyKey){
-  const input=document.getElementById('rd_pass-'+replyKey).value;
-  if(await hashPassword(input)!==allPosts[postKey].comments[commentKey].replies[replyKey].password)
-    return alert('불일치');
-  remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey));
-};
+}
 </script>
+
 </body>
 </html>
