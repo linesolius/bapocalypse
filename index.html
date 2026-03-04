@@ -52,6 +52,14 @@ textarea,input,select{
 }
 .action-btn:hover{ box-shadow:0 0 10px #2aff00; }
 
+.reply-box{
+  margin-left:25px;
+  margin-top:10px;
+  padding:10px;
+  background:#0f180f;
+  border:1px solid rgba(0,255,0,0.2);
+}
+
 footer{text-align:center;padding:40px 0;opacity:0.6}
 hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
 </style>
@@ -120,11 +128,6 @@ async function hashPassword(password){
 
 function handleRouting(){
   const hash=location.hash.replace('#','');
-  if(hash==='write'){
-    selectedPostKey=null;
-    renderWritePage();
-    return;
-  }
   if(hash.startsWith('post-')){
     selectedPostKey=hash.replace('post-','');
   }else{
@@ -178,47 +181,113 @@ function renderDetail(key){
     return;
   }
 
+  let commentsHTML='';
+
+  if(post.comments){
+    Object.entries(post.comments).forEach(([cid,c])=>{
+      commentsHTML+=`
+      <div style="margin-top:20px;border-top:1px solid #1f3f1f;padding-top:10px;">
+        <b>${c.nickname}</b>
+        <div>${c.text}</div>
+        <button class="action-btn" onclick="deleteComment('${key}','${cid}')">삭제</button>
+      `;
+
+      if(c.replies){
+        Object.entries(c.replies).forEach(([rid,r])=>{
+          commentsHTML+=`
+          <div class="reply-box">
+            <b>${r.nickname}</b>
+            <div>${r.text}</div>
+            <button class="action-btn" onclick="deleteReply('${key}','${cid}','${rid}')">삭제</button>
+          </div>`;
+        });
+      }
+
+      commentsHTML+=`
+        <div class="reply-box">
+          <input id="r_nick_${cid}" placeholder="닉네임">
+          <input id="r_pass_${cid}" type="password" placeholder="비밀번호">
+          <input id="r_text_${cid}" placeholder="답글">
+          <button class="action-btn" onclick="addReply('${key}','${cid}')">답글 등록</button>
+        </div>
+      </div>`;
+    });
+  }
+
   container.innerHTML=`
   <div class='card'>
     <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
 
     <div class='meta'>[${post.category||'미분류'}]</div>
     <h2>${post.title}</h2>
-    <div class='meta'>작성자: ${post.nickname} | ${post.date||''}</div>
+    <div class='meta'>작성자: ${post.nickname}</div>
 
     <div style="margin-top:20px; white-space:pre-line;">
       ${post.content}
     </div>
 
-    <div style="margin-top:20px;">
-      <button class="action-btn" onclick="showPostEdit('${key}')">수정</button>
-      <button class="action-btn" onclick="showPostDelete('${key}')">삭제</button>
-    </div>
+    <hr>
+    <h3>댓글</h3>
 
-    <div id="post-edit"></div>
+    ${commentsHTML}
+
+    <div style="margin-top:20px;">
+      <input id="c_nick" placeholder="닉네임">
+      <input id="c_pass" type="password" placeholder="비밀번호">
+      <textarea id="c_text" rows="3" placeholder="댓글"></textarea>
+      <button class="action-btn" onclick="addComment('${key}')">댓글 등록</button>
+    </div>
   </div>`;
 }
 
-window.submitPost=async function(){
-  const title=titleEl.value.trim();
-  const nickname=nickEl.value.trim();
-  const password=passEl.value;
-  const content=contentEl.value.trim();
-  const category=categoryEl.value;
+// 댓글 추가
+window.addComment=async function(postKey){
+  const nick=c_nick.value.trim();
+  const pass=c_pass.value;
+  const text=c_text.value.trim();
+  if(!nick||!pass||!text) return alert("모든 항목 입력");
 
-  if(!title||!nickname||!password||!content) return alert('모든 항목 입력');
-
-  await push(postsRef,{
-    title,
-    nickname,
-    password:await hashPassword(password),
-    content,
-    category,
-    date:new Date().toLocaleDateString()
+  const newRef=push(ref(db,'posts/'+postKey+'/comments'));
+  await update(newRef,{
+    nickname:nick,
+    password:await hashPassword(pass),
+    text:text,
+    replies:{}
   });
+};
 
-  location.hash='';
-}
+// 댓글 삭제
+window.deleteComment=async function(postKey,cid){
+  const input=prompt("비밀번호 입력");
+  if(!input) return;
+  const saved=allPosts[postKey].comments[cid].password;
+  if(await hashPassword(input)!==saved) return alert("비밀번호 불일치");
+  remove(ref(db,'posts/'+postKey+'/comments/'+cid));
+};
+
+// 대댓글 추가
+window.addReply=async function(postKey,cid){
+  const nick=document.getElementById('r_nick_'+cid).value.trim();
+  const pass=document.getElementById('r_pass_'+cid).value;
+  const text=document.getElementById('r_text_'+cid).value.trim();
+  if(!nick||!pass||!text) return alert("입력");
+
+  const newRef=push(ref(db,'posts/'+postKey+'/comments/'+cid+'/replies'));
+  await update(newRef,{
+    nickname:nick,
+    password:await hashPassword(pass),
+    text:text
+  });
+};
+
+// 대댓글 삭제
+window.deleteReply=async function(postKey,cid,rid){
+  const input=prompt("비밀번호 입력");
+  if(!input) return;
+  const saved=allPosts[postKey].comments[cid].replies[rid].password;
+  if(await hashPassword(input)!==saved) return alert("비밀번호 불일치");
+  remove(ref(db,'posts/'+postKey+'/comments/'+cid+'/replies/'+rid));
+};
 </script>
 
 </body>
