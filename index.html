@@ -1,3 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nuclear Community</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
+body{background:#0a0d0a;color:#9cff57}
+header{background:#111411;padding:20px 40px;border-bottom:1px solid #2aff00}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+nav{margin-top:10px}
+nav button{
+  background:#132013;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:6px 12px;
+  margin-right:6px;
+  cursor:pointer;
+}
+nav button:hover{ box-shadow:0 0 8px #2aff00; }
+
+.write-btn{
+  background:#1a2a1a;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:8px 14px;
+  cursor:pointer;
+}
+
+.container{max-width:1000px;margin:40px auto;padding:0 20px}
+.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2)}
+.meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
+
+textarea,input,select{
+  width:100%;
+  margin-top:10px;
+  background:#0f140f;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:8px;
+}
+
+.action-btn{
+  background:#132013;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:6px 12px;
+  margin:6px 4px 6px 0;
+  cursor:pointer;
+}
+.action-btn:hover{ box-shadow:0 0 10px #2aff00; }
+
+footer{text-align:center;padding:40px 0;opacity:0.6}
+hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
+</style>
+</head>
+<body>
+
+<header>
+<div class="topbar">
+<h1>Nuclear Community</h1>
+<button class="write-btn" onclick="openForm()">게시하기</button>
+</div>
+
+<nav>
+<button onclick="filterCategory('all')">전체</button>
+<button onclick="filterCategory('공지')">공지</button>
+<button onclick="filterCategory('잡담')">잡담</button>
+<button onclick="filterCategory('정보')">정보</button>
+<button onclick="filterCategory('질문')">질문</button>
+<button onclick="filterCategory('거래')">거래</button>
+<button onclick="filterCategory('도움')">도움</button>
+</nav>
+</header>
+
+<div class="container" id="postList"></div>
+<footer>© 2033 Nuclear Community</footer>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -17,70 +97,70 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const postsRef = ref(db,'posts');
 
-let allPosts = {};
-let selectedPostKey = null;
-let currentCategory = 'all';
+let allPosts={};
+let selectedPostKey=null;
+let currentCategory='all';
 
-window.addEventListener('hashchange', handleRouting);
+window.addEventListener('hashchange',handleRouting);
 
-window.filterCategory = function(category){
-  currentCategory = category;
+window.filterCategory=function(category){
+  currentCategory=category;
   renderList();
 }
 
-window.openForm = () => location.hash = 'write';
+window.openForm=()=>location.hash='write';
 
 async function hashPassword(password){
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const encoder=new TextEncoder();
+  const data=encoder.encode(password);
+  const hashBuffer=await crypto.subtle.digest('SHA-256',data);
   return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2,'0')).join('');
+    .map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 function handleRouting(){
-  const hash = location.hash.replace('#','');
-
-  if(hash === 'write'){
-    selectedPostKey = null;
+  const hash=location.hash.replace('#','');
+  if(hash==='write'){
+    selectedPostKey=null;
     renderWritePage();
     return;
   }
-
   if(hash.startsWith('post-')){
-    selectedPostKey = hash.slice(5); 
-    renderDetail(selectedPostKey);
-    return;
+    selectedPostKey=hash.replace('post-','');
+  }else{
+    selectedPostKey=null;
   }
-
-  selectedPostKey = null;
-  renderList();
+  render();
 }
 
 onValue(postsRef,(snap)=>{
-  allPosts = snap.val() || {};
-  renderList();
+  allPosts=snap.val()||{};
+  render();
 });
 
+function render(){
+  if(selectedPostKey){
+    renderDetail(selectedPostKey);
+  }else{
+    renderList();
+  }
+}
+
 function renderList(){
-  const container = document.getElementById('postList');
-  container.innerHTML = '';
+  const container=document.getElementById('postList');
+  container.innerHTML='';
 
   Object.entries(allPosts).reverse().forEach(([key,post])=>{
-    if(currentCategory !== 'all' && post.category !== currentCategory) return;
+    if(currentCategory!=='all' && post.category!==currentCategory) return;
 
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.innerHTML = `
-      <div class='meta'>[${post.category || '미분류'}]</div>
+    const div=document.createElement('div');
+    div.className='card';
+    div.innerHTML=`
+      <div class='meta'>[${post.category||'미분류'}]</div>
       <h3>${post.title}</h3>
       <div class='meta'>${post.nickname}</div>
     `;
-    
-    div.addEventListener('click', () => {
-      location.hash = 'post-'+key;
-    });
-
+    div.onclick=()=>location.hash='post-'+key;
     container.appendChild(div);
   });
 
@@ -90,23 +170,21 @@ function renderList(){
 }
 
 function renderDetail(key){
-  const post = allPosts[key];
-  const container = document.getElementById('postList');
+  const post=allPosts[key];
+  const container=document.getElementById('postList');
 
   if(!post){
-    container.innerHTML = "<div class='card'>존재하지 않는 게시글입니다.</div>";
+    container.innerHTML="<div class='card'>존재하지 않는 게시글입니다.</div>";
     return;
   }
 
-  container.innerHTML = `
+  container.innerHTML=`
   <div class='card'>
     <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
 
     <div class='meta'>[${post.category||'미분류'}]</div>
     <h2>${post.title}</h2>
-    <div class='meta'>
-      작성자: ${post.nickname} | ${post.date||''}
-    </div>
+    <div class='meta'>작성자: ${post.nickname} | ${post.date||''}</div>
 
     <div style="margin-top:20px; white-space:pre-line;">
       ${post.content}
@@ -121,9 +199,27 @@ function renderDetail(key){
   </div>`;
 }
 
-// 수정/삭제 함수들은 그대로 유지하면 됩니다
-// submitPost 함수도 그대로 유지하세요
+window.submitPost=async function(){
+  const title=titleEl.value.trim();
+  const nickname=nickEl.value.trim();
+  const password=passEl.value;
+  const content=contentEl.value.trim();
+  const category=categoryEl.value;
 
+  if(!title||!nickname||!password||!content) return alert('모든 항목 입력');
+
+  await push(postsRef,{
+    title,
+    nickname,
+    password:await hashPassword(password),
+    content,
+    category,
+    date:new Date().toLocaleDateString()
+  });
+
+  location.hash='';
+}
 </script>
+
 </body>
 </html>
