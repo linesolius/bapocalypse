@@ -98,49 +98,15 @@ function renderDetail(key){
     return;
   }
 
-  let commentsHTML = '';
-
-  if(post.comments){
-    Object.entries(post.comments).forEach(([cid, c])=>{
-
-      commentsHTML += `
-        <div style="margin-top:20px;padding:10px;border-top:1px solid #ddd;">
-          <b>${c.nickname}</b>
-          <div style="margin:5px 0;">${c.text}</div>
-          <button class="action-btn" onclick="deleteComment('${key}','${cid}')">삭제</button>
-      `;
-
-      if(c.replies){
-        Object.entries(c.replies).forEach(([rid, r])=>{
-          commentsHTML += `
-            <div style="margin-left:20px;margin-top:10px;padding:8px;background:#f5f5f5;border-radius:6px;">
-              <b>${r.nickname}</b>
-              <div>${r.text}</div>
-              <button class="action-btn" onclick="deleteReply('${key}','${cid}','${rid}')">삭제</button>
-            </div>
-          `;
-        });
-      }
-
-      commentsHTML += `
-          <div style="margin-top:10px;">
-            <input id="r_nick_${cid}" placeholder="닉네임">
-            <input id="r_pass_${cid}" type="password" placeholder="비밀번호">
-            <input id="r_text_${cid}" placeholder="답글">
-            <button class="action-btn" onclick="addReply('${key}','${cid}')">답글</button>
-          </div>
-        </div>
-      `;
-    });
-  }
-
   container.innerHTML = `
   <div class='card'>
     <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
 
     <div class='meta'>[${post.category||'미분류'}]</div>
     <h2>${post.title}</h2>
-    <div class='meta'>작성자: ${post.nickname}</div>
+    <div class='meta'>
+      작성자: ${post.nickname} | ${post.date||''}
+    </div>
 
     <div style="margin-top:20px; white-space:pre-line;">
       ${post.content}
@@ -151,72 +117,12 @@ function renderDetail(key){
       <button class="action-btn" onclick="showPostDelete('${key}')">삭제</button>
     </div>
 
-    <hr style="margin:30px 0;">
-    <h3>댓글</h3>
-
-    ${commentsHTML}
-
-    <div style="margin-top:20px;">
-      <input id="c_nick" placeholder="닉네임">
-      <input id="c_pass" type="password" placeholder="비밀번호">
-      <textarea id="c_text" rows="3" placeholder="댓글"></textarea>
-      <button class="action-btn" onclick="addComment('${key}')">댓글 등록</button>
-    </div>
+    <div id="post-edit"></div>
   </div>`;
 }
 
-// 댓글 추가
-window.addComment = async function(postKey){
-  const nick = document.getElementById('c_nick').value.trim();
-  const pass = document.getElementById('c_pass').value;
-  const text = document.getElementById('c_text').value.trim();
-  if(!nick || !pass || !text) return alert("모든 항목 입력");
-
-  const newRef = push(ref(db, 'posts/'+postKey+'/comments'));
-  await update(newRef,{
-    nickname: nick,
-    password: await hashPassword(pass),
-    text: text,
-    replies: {}
-  });
-};
-
-// 댓글 삭제
-window.deleteComment = async function(postKey, commentKey){
-  const input = prompt("비밀번호 입력");
-  if(!input) return;
-
-  const saved = allPosts[postKey].comments[commentKey].password;
-  if(await hashPassword(input) !== saved) return alert("비밀번호 불일치");
-
-  remove(ref(db,'posts/'+postKey+'/comments/'+commentKey));
-};
-
-// 대댓글 작성
-window.addReply = async function(postKey, commentKey){
-  const nick = document.getElementById('r_nick_'+commentKey).value.trim();
-  const pass = document.getElementById('r_pass_'+commentKey).value;
-  const text = document.getElementById('r_text_'+commentKey).value.trim();
-  if(!nick || !pass || !text) return alert("입력");
-
-  const newRef = push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'));
-  await update(newRef,{
-    nickname: nick,
-    password: await hashPassword(pass),
-    text: text
-  });
-};
-
-// 대댓글 삭제
-window.deleteReply = async function(postKey, commentKey, replyKey){
-  const input = prompt("비밀번호 입력");
-  if(!input) return;
-
-  const saved = allPosts[postKey].comments[commentKey].replies[replyKey].password;
-  if(await hashPassword(input) !== saved) return alert("비밀번호 불일치");
-
-  remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey));
-};
+// 수정/삭제 함수들은 그대로 유지하면 됩니다
+// submitPost 함수도 그대로 유지하세요
 
 </script>
 
