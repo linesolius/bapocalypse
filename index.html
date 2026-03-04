@@ -9,46 +9,26 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
 body{background:#0a0d0a;color:#9cff57}
 header{background:#111411;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2aff00}
-header h1{letter-spacing:2px;text-shadow:0 0 8px rgba(0,255,0,0.8)}
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
 
-.container{max-width:1000px;margin:40px auto;padding:0 20px}
-.card{background:#111611;padding:30px;margin-bottom:30px;border:1px solid rgba(0,255,0,0.2)}
+.category-bar{display:flex;gap:10px;padding:15px 40px;border-bottom:1px solid rgba(0,255,0,0.2);flex-wrap:wrap;}
+.category-btn{background:transparent;border:1px solid rgba(0,255,0,0.4);color:#9cff57;padding:5px 12px;cursor:pointer;font-size:13px;}
+.category-btn.active{background:#1a2a1a;border-color:#2aff00;}
 
-textarea,input{
+.container{max-width:1000px;margin:40px auto;padding:0 20px}
+.card{background:#111611;padding:30px;margin-bottom:30px;border:1px solid rgba(0,255,0,0.2);cursor:pointer}
+
+textarea,input,select{
   width:100%;
   margin-top:10px;
   background:#0f140f;
   border:1px solid #2aff00;
   color:#9cff57;
   padding:8px;
-  outline:none
 }
 
-button{cursor:pointer}
-
-.comment{margin-top:25px;padding:15px;border:1px solid rgba(0,255,0,0.2)}
-
-footer{text-align:center;padding:40px 0;opacity:0.6}
-
-.card h2{margin-bottom:25px;}
-.card > div{margin-bottom:25px;}
-.card hr{margin:35px 0;}
-
-.top-actions{display:flex;gap:10px;margin-bottom:20px;}
-.action-btn{
-  background:transparent;
-  border:1px solid rgba(0,255,0,0.4);
-  color:#9cff57;
-  padding:6px 12px;
-  font-size:13px;
-  transition:all 0.2s ease;
-}
-.action-btn:hover{
-  background:#1a2a1a;
-  border-color:#2aff00;
-  box-shadow:0 0 8px rgba(0,255,0,0.6);
-}
+.category-tag{font-size:12px;opacity:0.7;margin-bottom:10px;}
+.action-btn{margin-top:15px;background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -58,24 +38,25 @@ footer{text-align:center;padding:40px 0;opacity:0.6}
 <button class="write-btn" onclick="openForm()">게시하기</button>
 </header>
 
+<div class="category-bar" id="categoryBar"></div>
 <div class="container" id="postList"></div>
-<footer>© 2033 Nuclear Community</footer>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
+  apiKey: "AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
   authDomain: "community-61897.firebaseapp.com",
   databaseURL: "https://community-61897-default-rtdb.firebaseio.com",
   projectId: "community-61897",
   storageBucket: "community-61897.firebasestorage.app",
   messagingSenderId: "1081865580697",
-  appId: "1:1081865580697:web:6890110c8db86e0f97c808"
+  appId: "1:1081865580697:web:f9c3319e011cf7f297c808"
 };
 
 const MASTER_PASSWORD = "porygon2007";
+const categories = ["전체","공지","잡담","정보","질문","거래","도움"];
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -83,8 +64,7 @@ const postsRef = ref(db,'posts');
 
 let allPosts = {};
 let selectedPostKey = null;
-
-window.addEventListener('hashchange',handleRouting);
+let currentCategory = "전체";
 
 async function hashPassword(password){
   const encoder=new TextEncoder();
@@ -94,10 +74,11 @@ async function hashPassword(password){
   return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+window.addEventListener('hashchange',handleRouting);
+
 function handleRouting(){
   const hash=location.hash.replace('#','');
   if(hash==='write') return renderWritePage();
-  if(hash.startsWith('edit-')) return renderEditPage(hash.replace('edit-',''));
   if(hash.startsWith('post-')) selectedPostKey=hash.replace('post-','');
   else selectedPostKey=null;
   render();
@@ -111,17 +92,41 @@ onValue(postsRef,(snap)=>{
 });
 
 function render(){
+  renderCategoryBar();
   if(selectedPostKey) renderDetail(selectedPostKey);
   else renderList();
+}
+
+function renderCategoryBar(){
+  const bar=document.getElementById('categoryBar');
+  bar.innerHTML='';
+  categories.forEach(cat=>{
+    const btn=document.createElement('button');
+    btn.className='category-btn'+(currentCategory===cat?' active':'');
+    btn.innerText=cat;
+    btn.onclick=()=>{
+      currentCategory=cat;
+      selectedPostKey=null;
+      location.hash='';
+      render();
+    };
+    bar.appendChild(btn);
+  });
 }
 
 function renderList(){
   const container=document.getElementById('postList');
   container.innerHTML='';
   Object.entries(allPosts).reverse().forEach(([key,post])=>{
+    if(currentCategory!=="전체" && post.category!==currentCategory) return;
+
     const div=document.createElement('div');
     div.className='card';
-    div.innerHTML=\`<h3>\${post.title}</h3><div>\${post.nickname}</div>\`;
+    div.innerHTML=`
+      <div class="category-tag">[${post.category}]</div>
+      <h3>${post.title}</h3>
+      <div>${post.nickname}</div>
+    `;
     div.onclick=()=>location.hash='post-'+key;
     container.appendChild(div);
   });
@@ -131,160 +136,84 @@ function renderDetail(key){
   const post=allPosts[key];
   const container=document.getElementById('postList');
 
-  let commentsHTML='';
-  if(post.comments){
-    Object.entries(post.comments).forEach(([cid,c])=>{
-      commentsHTML+=\`
-      <div class='comment'>
-        <b>\${c.nickname}</b>
-        <button onclick="deleteComment('\${key}','\${cid}')">삭제</button>
-        <div>\${c.text}</div>
-      </div>\`;
-    });
-  }
-
-  container.innerHTML=\`
-  <div class='card'>
-    <div class="top-actions">
-      <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
-      <button class="action-btn" onclick="location.hash='edit-\${key}'">수정</button>
-      <button class="action-btn" onclick="deletePost('\${key}')">삭제</button>
-    </div>
-    <h2>\${post.title}</h2>
-    <div>\${post.content}</div>
-    <hr>
-    <h3>댓글</h3>
-    \${commentsHTML}
-    <input id='c_nick' placeholder='닉네임'>
-    <input id='c_pass' type='password' placeholder='비밀번호'>
-    <textarea id='c_text' rows='3' placeholder='댓글'></textarea>
-    <button class="action-btn" onclick="addComment('\${key}')">댓글 등록</button>
-  </div>\`;
+  container.innerHTML=`
+  <div class='card' style="cursor:default">
+    <button onclick="location.hash=''">← 돌아가기</button>
+    <button onclick="deletePost('${key}')">삭제</button>
+    <div class="category-tag">[${post.category}]</div>
+    <h2>${post.title}</h2>
+    <div style="margin-top:20px;">${post.content}</div>
+  </div>`;
 }
 
-function renderEditPage(key){
-  const post=allPosts[key];
+function renderWritePage(){
   const container=document.getElementById('postList');
+  container.innerHTML=`
+  <div class='card' style="cursor:default">
+    <button onclick="location.hash=''">← 돌아가기</button>
+    <h2>게시글 작성</h2>
 
-  container.innerHTML=\`
-  <div class='card'>
-    <div class="top-actions">
-      <button class="action-btn" onclick="location.hash='post-\${key}'">← 취소</button>
-    </div>
-    <h2>게시글 수정</h2>
-    <input id='edit_title' value="\${post.title}">
-    <textarea id='edit_content' rows='6'>\${post.content}</textarea>
-    <input id='edit_pass' type='password' placeholder='비밀번호 입력'>
-    <button class="action-btn" onclick="updatePost('\${key}')">수정 완료</button>
-  </div>\`;
+    <select id="category">
+      <option value="공지">공지</option>
+      <option value="잡담">잡담</option>
+      <option value="정보">정보</option>
+      <option value="질문">질문</option>
+      <option value="거래">거래</option>
+      <option value="도움">도움</option>
+    </select>
+
+    <input id='title' placeholder='제목'>
+    <input id='nickname' placeholder='닉네임'>
+    <input id='password' type='password' placeholder='삭제/수정용 비밀번호'>
+    <textarea id='content' rows='6' placeholder='내용'></textarea>
+    <button class="action-btn" onclick='submitPost()'>등록</button>
+  </div>`;
 }
 
-window.updatePost=async function(key){
-  const title=document.getElementById('edit_title').value.trim();
-  const content=document.getElementById('edit_content').value.trim();
-  const pass=document.getElementById('edit_pass').value;
-  const post=allPosts[key];
+window.submitPost=async function(){
+  const title=document.getElementById('title').value.trim();
+  const nickname=document.getElementById('nickname').value.trim();
+  const content=document.getElementById('content').value.trim();
+  const password=document.getElementById('password').value;
+  const category=document.getElementById('category').value;
 
-  if(pass===MASTER_PASSWORD){
-    await update(ref(db,'posts/'+key),{title,content});
-    location.hash='post-'+key;
+  if(!title||!nickname||!content||!password){
+    alert('모든 항목 입력');
     return;
   }
 
-  const hashed=await hashPassword(pass);
-  if(hashed!==post.password) return alert("비밀번호 틀림");
+  await push(postsRef,{
+    title,
+    nickname,
+    content,
+    category,
+    password: await hashPassword(password),
+    date:new Date().toLocaleDateString()
+  });
 
-  await update(ref(db,'posts/'+key),{title,content});
-  location.hash='post-'+key;
+  location.hash='';
 }
 
 window.deletePost=async function(key){
-  const pass=prompt("비밀번호 입력");
-  if(!pass) return;
+  const input=prompt("비밀번호 입력");
+  if(!input) return;
+
   const post=allPosts[key];
 
-  if(pass===MASTER_PASSWORD){
+  if(input===MASTER_PASSWORD){
     await remove(ref(db,'posts/'+key));
     location.hash='';
     return;
   }
 
-  const hashed=await hashPassword(pass);
-  if(hashed!==post.password) return alert("비밀번호 틀림");
-
-  await remove(ref(db,'posts/'+key));
-  location.hash='';
-}
-
-window.deleteComment=async function(postKey,commentKey){
-  const pass=prompt("비밀번호 입력");
-  if(!pass) return;
-  const comment=allPosts[postKey].comments[commentKey];
-
-  if(pass===MASTER_PASSWORD){
-    await remove(ref(db,'posts/'+postKey+'/comments/'+commentKey));
+  const hashed=await hashPassword(input);
+  if(hashed!==post.password){
+    alert("비밀번호 틀림");
     return;
   }
 
-  const hashed=await hashPassword(pass);
-  if(hashed!==comment.password) return alert("비밀번호 틀림");
-
-  await remove(ref(db,'posts/'+postKey+'/comments/'+commentKey));
-}
-
-function renderWritePage(){
-  const container=document.getElementById('postList');
-  container.innerHTML=\`
-  <div class='card'>
-    <div class="top-actions">
-      <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
-    </div>
-    <h2>게시글 작성</h2>
-    <input id='title' placeholder='제목'>
-    <input id='nickname' placeholder='닉네임'>
-    <input id='password' type='password' placeholder='비밀번호'>
-    <textarea id='content' rows='6' placeholder='내용'></textarea>
-    <button class="action-btn" onclick='submitPost()'>등록</button>
-  </div>\`;
-
-  window.titleEl=document.getElementById('title');
-  window.nickEl=document.getElementById('nickname');
-  window.passEl=document.getElementById('password');
-  window.contentEl=document.getElementById('content');
-}
-
-window.submitPost=async function(){
-  const title=titleEl.value.trim();
-  const nickname=nickEl.value.trim();
-  const password=passEl.value;
-  const content=contentEl.value.trim();
-  if(!title||!nickname||!password||!content) return alert('모든 항목 입력');
-
-  await push(postsRef,{
-    title,
-    nickname,
-    password:await hashPassword(password),
-    content,
-    date:new Date().toLocaleDateString(),
-    comments:{}
-  });
-
+  await remove(ref(db,'posts/'+key));
   location.hash='';
-}
-
-window.addComment=async function(postKey){
-  const nick=c_nick.value;
-  const pass=c_pass.value;
-  const text=c_text.value;
-  if(!nick||!pass||!text) return alert('입력');
-
-  const newRef=push(ref(db,'posts/'+postKey+'/comments'));
-  await update(newRef,{
-    nickname:nick,
-    password:await hashPassword(pass),
-    text,
-    replies:{}
-  });
 }
 </script>
 
