@@ -61,9 +61,9 @@ textarea,input,select{
   display:none;
 }
 
-img.uploaded-image{
+.uploaded-image{
   max-width:100%;
-  margin-top:10px;
+  margin-top:15px;
   border:1px solid #2aff00;
 }
 
@@ -96,7 +96,7 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const MASTER_PASSWORD="porygon2007";
 
@@ -105,10 +105,9 @@ const firebaseConfig={
   authDomain:"community-61897.firebaseapp.com",
   databaseURL:"https://community-61897-default-rtdb.firebaseio.com",
   projectId:"community-61897",
-  storageBucket:"community-61897.firebasestorage.app",
+  storageBucket:"community-61897.appspot.com",
   messagingSenderId:"1081865580697",
-  appId:"1:1081865580697:web:6ff7e5b838cdbde397c808",
-  measurementId:"G-XSNWJ8PT5X"
+  appId:"1:1081865580697:web:6ff7e5b838cdbde397c808"
 };
 
 const app=initializeApp(firebaseConfig);
@@ -145,17 +144,15 @@ onValue(postsRef,(snap)=>{
 });
 
 function render(){
-  if(location.hash==="#write") return;
   selectedPostKey?renderDetail(selectedPostKey):renderList();
 }
 
-/* ========================= */
-/* ===== 글 작성 페이지 ===== */
-/* ========================= */
+/* ===================== */
+/* ===== 글 작성 ===== */
+/* ===================== */
 
 function renderWritePage(){
   const container=document.getElementById('postList');
-
   container.innerHTML=`
   <div class="card">
     <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
@@ -181,50 +178,37 @@ function renderWritePage(){
     <label>파일 업로드</label>
     <input type="file" id="w_files" multiple>
 
-    <div id="uploadStatus" style="margin-top:10px;"></div>
-
     <button class="action-btn" onclick="submitPost()">게시하기</button>
   </div>`;
 }
 
-/* ========================= */
-/* ===== 업로드 처리 ===== */
-/* ========================= */
-
 window.submitPost=async function(){
-  const title=document.getElementById('w_title').value;
-  const nickname=document.getElementById('w_nick').value;
-  const password=document.getElementById('w_pass').value;
-  const content=document.getElementById('w_content').value;
-  const category=document.getElementById('w_category').value;
-  const images=document.getElementById('w_images').files;
-  const files=document.getElementById('w_files').files;
+  const title=w_title.value;
+  const nickname=w_nick.value;
+  const password=w_pass.value;
+  const content=w_content.value;
+  const category=w_category.value;
 
   if(!title||!nickname||!password||!content){
     alert("모든 필드를 입력하세요");
     return;
   }
 
-  const status=document.getElementById('uploadStatus');
-  status.innerHTML="업로드 중...";
+  const imageURLs=[];
+  const fileData=[];
 
-  const uploadedImages=[];
-  const uploadedFiles=[];
-
-  for(let file of images){
+  for(let file of w_images.files){
     const storageRef=sRef(storage,'images/'+Date.now()+"_"+file.name);
-    const task=uploadBytesResumable(storageRef,file);
-    await task;
-    const url=await getDownloadURL(task.snapshot.ref);
-    uploadedImages.push(url);
+    await uploadBytes(storageRef,file);
+    const url=await getDownloadURL(storageRef);
+    imageURLs.push(url);
   }
 
-  for(let file of files){
+  for(let file of w_files.files){
     const storageRef=sRef(storage,'files/'+Date.now()+"_"+file.name);
-    const task=uploadBytesResumable(storageRef,file);
-    await task;
-    const url=await getDownloadURL(task.snapshot.ref);
-    uploadedFiles.push({name:file.name,url});
+    await uploadBytes(storageRef,file);
+    const url=await getDownloadURL(storageRef);
+    fileData.push({name:file.name,url});
   }
 
   const encoder=new TextEncoder();
@@ -235,55 +219,43 @@ window.submitPost=async function(){
   await push(postsRef,{
     title,nickname,content,category,
     password:passwordHash,
-    images:uploadedImages,
-    files:uploadedFiles,
-    createdAt:Date.now()
+    images:imageURLs,
+    files:fileData,
+    comments:{}
   });
 
-  alert("게시 완료");
   location.hash='';
 };
 
-/* ========================= */
-/* ===== 상세 페이지 ===== */
-/* ========================= */
+/* ===================== */
+/* ===== 상세 확장 ===== */
+/* ===================== */
 
 function renderDetail(key){
   const post=allPosts[key];
   const container=document.getElementById('postList');
-
   if(!post){
     container.innerHTML="<div class='card'>존재하지 않는 게시글입니다.</div>";
     return;
   }
 
-  let imageHTML="";
+  let imageHTML='';
   if(post.images){
     post.images.forEach(url=>{
       imageHTML+=`<img src="${url}" class="uploaded-image">`;
     });
   }
 
-  let fileHTML="";
+  let fileHTML='';
   if(post.files){
     post.files.forEach(f=>{
-      fileHTML+=`<div><a href="${f.url}" target="_blank">${f.name}</a></div>`;
+      fileHTML+=`<div>📎 <a href="${f.url}" target="_blank">${f.name}</a></div>`;
     });
   }
 
-  container.innerHTML=`
+  container.innerHTML+=`
   <div class='card'>
-    <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
-    <div class='meta'>[${post.category||'미분류'}]</div>
-    <h2>${post.title}</h2>
-    <div class='meta'>작성자: ${post.nickname}</div>
-
-    <div style="margin-top:20px; white-space:pre-line;">
-      ${post.content}
-    </div>
-
     ${imageHTML}
-    <hr>
     ${fileHTML}
   </div>`;
 }
