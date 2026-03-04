@@ -89,8 +89,8 @@ const firebaseConfig = {
   projectId: "community-61897",
   storageBucket: "community-61897.firebasestorage.app",
   messagingSenderId: "1081865580697",
-  appId: "1:1081865580697:web:95e2a42ff4b40fbe97c808",
-  measurementId: "G-PVGCEP53R0"
+  appId: "1:1081865580697:web:6ff7e5b838cdbde397c808",
+  measurementId: "G-XSNWJ8PT5X"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -108,6 +108,8 @@ window.filterCategory=function(category){
   renderList();
 }
 
+window.openForm=()=>location.hash='write';
+
 async function hashPassword(password){
   const encoder=new TextEncoder();
   const data=encoder.encode(password);
@@ -118,13 +120,18 @@ async function hashPassword(password){
 
 function handleRouting(){
   const hash=location.hash.replace('#','');
-  if(hash==='write') return renderWritePage();
-  if(hash.startsWith('post-')) selectedPostKey=hash.replace('post-','');
-  else selectedPostKey=null;
+  if(hash==='write'){
+    selectedPostKey=null;
+    renderWritePage();
+    return;
+  }
+  if(hash.startsWith('post-')){
+    selectedPostKey=hash.replace('post-','');
+  }else{
+    selectedPostKey=null;
+  }
   render();
 }
-
-window.openForm=()=>location.hash='write';
 
 onValue(postsRef,(snap)=>{
   allPosts=snap.val()||{};
@@ -132,8 +139,11 @@ onValue(postsRef,(snap)=>{
 });
 
 function render(){
-  if(selectedPostKey) renderDetail(selectedPostKey);
-  else renderList();
+  if(selectedPostKey){
+    renderDetail(selectedPostKey);
+  }else{
+    renderList();
+  }
 }
 
 function renderList(){
@@ -159,34 +169,34 @@ function renderList(){
   }
 }
 
-function renderWritePage(){
+function renderDetail(key){
+  const post=allPosts[key];
   const container=document.getElementById('postList');
+
+  if(!post){
+    container.innerHTML="<div class='card'>존재하지 않는 게시글입니다.</div>";
+    return;
+  }
+
   container.innerHTML=`
   <div class='card'>
     <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
-    <h2>게시글 작성</h2>
 
-    <select id='category'>
-      <option value='공지'>공지</option>
-      <option value='잡담'>잡담</option>
-      <option value='정보'>정보</option>
-      <option value='질문'>질문</option>
-      <option value='거래'>거래</option>
-      <option value='도움'>도움</option>
-    </select>
+    <div class='meta'>[${post.category||'미분류'}]</div>
+    <h2>${post.title}</h2>
+    <div class='meta'>작성자: ${post.nickname} | ${post.date||''}</div>
 
-    <input id='title' placeholder='제목'>
-    <input id='nickname' placeholder='닉네임'>
-    <input id='password' type='password' placeholder='비밀번호'>
-    <textarea id='content' rows='6' placeholder='내용'></textarea>
-    <button class="action-btn" onclick='submitPost()'>등록</button>
+    <div style="margin-top:20px; white-space:pre-line;">
+      ${post.content}
+    </div>
+
+    <div style="margin-top:20px;">
+      <button class="action-btn" onclick="showPostEdit('${key}')">수정</button>
+      <button class="action-btn" onclick="showPostDelete('${key}')">삭제</button>
+    </div>
+
+    <div id="post-edit"></div>
   </div>`;
-
-  window.titleEl=document.getElementById('title');
-  window.nickEl=document.getElementById('nickname');
-  window.passEl=document.getElementById('password');
-  window.contentEl=document.getElementById('content');
-  window.categoryEl=document.getElementById('category');
 }
 
 window.submitPost=async function(){
@@ -204,8 +214,7 @@ window.submitPost=async function(){
     password:await hashPassword(password),
     content,
     category,
-    date:new Date().toLocaleDateString(),
-    comments:{}
+    date:new Date().toLocaleDateString()
   });
 
   location.hash='';
