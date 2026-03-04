@@ -58,7 +58,7 @@ textarea,input,select{
   padding:10px;
   background:#0f180f;
   border:1px solid rgba(0,255,0,0.2);
-  display:none; /* 🔥 기본은 숨김 */
+  display:none;
 }
 
 footer{text-align:center;padding:40px 0;opacity:0.6}
@@ -91,22 +91,22 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const MASTER_PASSWORD = "porygon2007"; // 🔥 마스터 비밀번호
+const MASTER_PASSWORD="porygon2007";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
-  authDomain: "community-61897.firebaseapp.com",
-  databaseURL: "https://community-61897-default-rtdb.firebaseio.com",
-  projectId: "community-61897",
-  storageBucket: "community-61897.firebasestorage.app",
-  messagingSenderId: "1081865580697",
-  appId: "1:1081865580697:web:6ff7e5b838cdbde397c808",
-  measurementId: "G-XSNWJ8PT5X"
+const firebaseConfig={
+  apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
+  authDomain:"community-61897.firebaseapp.com",
+  databaseURL:"https://community-61897-default-rtdb.firebaseio.com",
+  projectId:"community-61897",
+  storageBucket:"community-61897.firebasestorage.app",
+  messagingSenderId:"1081865580697",
+  appId:"1:1081865580697:web:6ff7e5b838cdbde397c808",
+  measurementId:"G-XSNWJ8PT5X"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const postsRef = ref(db,'posts');
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+const postsRef=ref(db,'posts');
 
 let allPosts={};
 let selectedPostKey=null;
@@ -114,12 +114,10 @@ let currentCategory='all';
 
 window.addEventListener('hashchange',handleRouting);
 
-window.filterCategory=function(category){
+window.filterCategory=category=>{
   currentCategory=category;
   renderList();
-}
-
-window.openForm=()=>location.hash='write';
+};
 
 async function hashPassword(password){
   const encoder=new TextEncoder();
@@ -136,11 +134,7 @@ async function checkPermission(input,savedHash){
 
 function handleRouting(){
   const hash=location.hash.replace('#','');
-  if(hash.startsWith('post-')){
-    selectedPostKey=hash.replace('post-','');
-  }else{
-    selectedPostKey=null;
-  }
+  selectedPostKey=hash.startsWith('post-')?hash.replace('post-',''):null;
   render();
 }
 
@@ -150,20 +144,14 @@ onValue(postsRef,(snap)=>{
 });
 
 function render(){
-  if(selectedPostKey){
-    renderDetail(selectedPostKey);
-  }else{
-    renderList();
-  }
+  selectedPostKey?renderDetail(selectedPostKey):renderList();
 }
 
 function renderList(){
   const container=document.getElementById('postList');
   container.innerHTML='';
-
   Object.entries(allPosts).reverse().forEach(([key,post])=>{
-    if(currentCategory!=='all' && post.category!==currentCategory) return;
-
+    if(currentCategory!=='all'&&post.category!==currentCategory) return;
     const div=document.createElement('div');
     div.className='card';
     div.innerHTML=`
@@ -174,7 +162,6 @@ function renderList(){
     div.onclick=()=>location.hash='post-'+key;
     container.appendChild(div);
   });
-
   if(!container.innerHTML){
     container.innerHTML="<div style='text-align:center;margin-top:120px;'>게시글이 없습니다.</div>";
   }
@@ -183,14 +170,12 @@ function renderList(){
 function renderDetail(key){
   const post=allPosts[key];
   const container=document.getElementById('postList');
-
   if(!post){
     container.innerHTML="<div class='card'>존재하지 않는 게시글입니다.</div>";
     return;
   }
 
   let commentsHTML='';
-
   if(post.comments){
     Object.entries(post.comments).forEach(([cid,c])=>{
       commentsHTML+=`
@@ -200,7 +185,6 @@ function renderDetail(key){
         <button class="action-btn" onclick="deleteComment('${key}','${cid}')">삭제</button>
         <button class="action-btn" onclick="toggleReplyBox('${cid}')" id="btn_${cid}">답글</button>
       `;
-
       if(c.replies){
         Object.entries(c.replies).forEach(([rid,r])=>{
           commentsHTML+=`
@@ -211,7 +195,6 @@ function renderDetail(key){
           </div>`;
         });
       }
-
       commentsHTML+=`
         <div class="reply-box" id="reply_${cid}">
           <input id="r_nick_${cid}" placeholder="닉네임">
@@ -235,6 +218,11 @@ function renderDetail(key){
       ${post.content}
     </div>
 
+    <div style="margin-top:15px;">
+      <button class="action-btn" onclick="editPost('${key}')">수정</button>
+      <button class="action-btn" onclick="deletePost('${key}')">삭제</button>
+    </div>
+
     <hr>
     <h3>댓글</h3>
 
@@ -249,46 +237,37 @@ function renderDetail(key){
   </div>`;
 }
 
-// 🔥 답글 토글
-window.toggleReplyBox=function(cid){
-  document.querySelectorAll('.reply-box').forEach(box=>{
-    if(box.id && box.id.startsWith('reply_')) box.style.display='none';
-  });
-
-  document.querySelectorAll('[id^="btn_"]').forEach(btn=>{
-    btn.innerText='답글';
-  });
-
-  const box=document.getElementById('reply_'+cid);
-  const btn=document.getElementById('btn_'+cid);
-
-  if(box.style.display==='block'){
-    box.style.display='none';
-    btn.innerText='답글';
-  }else{
-    box.style.display='block';
-    btn.innerText='취소';
+/* 게시글 삭제 */
+window.deletePost=async function(key){
+  const input=prompt("비밀번호 입력");
+  if(!input) return;
+  const saved=allPosts[key].password;
+  if(!(await checkPermission(input,saved))) return alert("비밀번호 불일치");
+  if(confirm("정말 삭제하시겠습니까?")){
+    await remove(ref(db,'posts/'+key));
+    location.hash='';
   }
 };
 
-// 댓글 삭제 (마스터 포함)
-window.deleteComment=async function(postKey,cid){
+/* 게시글 수정 */
+window.editPost=async function(key){
+  const post=allPosts[key];
   const input=prompt("비밀번호 입력");
   if(!input) return;
-  const saved=allPosts[postKey].comments[cid].password;
-  if(!(await checkPermission(input,saved))) return alert("비밀번호 불일치");
-  remove(ref(db,'posts/'+postKey+'/comments/'+cid));
-};
+  if(!(await checkPermission(input,post.password))) return alert("비밀번호 불일치");
 
-// 답글 삭제 (마스터 포함)
-window.deleteReply=async function(postKey,cid,rid){
-  const input=prompt("비밀번호 입력");
-  if(!input) return;
-  const saved=allPosts[postKey].comments[cid].replies[rid].password;
-  if(!(await checkPermission(input,saved))) return alert("비밀번호 불일치");
-  remove(ref(db,'posts/'+postKey+'/comments/'+cid+'/replies/'+rid));
+  const newTitle=prompt("새 제목",post.title);
+  if(newTitle===null) return;
+  const newContent=prompt("새 내용",post.content);
+  if(newContent===null) return;
+
+  await update(ref(db,'posts/'+key),{
+    title:newTitle,
+    content:newContent
+  });
+
+  alert("수정 완료");
 };
 </script>
-
 </body>
 </html>
