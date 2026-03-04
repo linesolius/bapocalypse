@@ -196,6 +196,8 @@ const db = getDatabase(app);
 const postsRef = ref(db, 'posts');
 
 let currentCategory = 'all';
+let allPosts = {};
+let selectedPostKey = null;
 
 window.openForm = function(){
   document.getElementById('formModal').style.display='flex';
@@ -209,7 +211,8 @@ window.addPost = function(){
 
   push(postsRef,{
     nickname,category,title,content,
-    date:new Date().toLocaleString()
+    date:`2033 - ` + new Date().toLocaleString(),
+    comments: []
   });
 
   document.getElementById('formModal').style.display='none';
@@ -220,8 +223,6 @@ window.filterCategory=function(cat){
   renderPosts();
 }
 
-let allPosts={};
-
 onValue(postsRef,(snapshot)=>{
   allPosts=snapshot.val()||{};
   renderPosts();
@@ -230,17 +231,71 @@ onValue(postsRef,(snapshot)=>{
 function renderPosts(){
   const postList=document.getElementById('postList');
   postList.innerHTML='';
-  Object.values(allPosts).reverse().forEach(post=>{
+
+  if(selectedPostKey){
+    renderDetail(selectedPostKey);
+    return;
+  }
+
+  Object.entries(allPosts).reverse().forEach(([key,post])=>{
     if(currentCategory!=='all' && post.category!==currentCategory) return;
+
     const div=document.createElement('div');
     div.className='card';
     div.innerHTML=`
       <h3>[${post.category}] ${post.title}</h3>
       <div class="meta">${post.nickname} · ${post.date}</div>
-      <div class="preview">${post.content.substring(0,100)}...</div>
     `;
+
+    div.addEventListener('click',()=>{
+      selectedPostKey = key;
+      renderPosts();
+    });
+
     postList.appendChild(div);
   });
+}
+
+function renderDetail(key){
+  const post = allPosts[key];
+  const postList=document.getElementById('postList');
+
+  postList.innerHTML=`
+    <div class="card">
+      <button onclick="goBack()" style="margin-bottom:15px;">← 돌아가기</button>
+      <h2>[${post.category}] ${post.title}</h2>
+      <div class="meta">${post.nickname} · ${post.date}</div>
+      <div style="margin-top:20px; white-space:pre-line;">${post.content}</div>
+    </div>
+    <div class="card">
+      <h3>☢ 댓글</h3>
+      <div id="commentSection"></div>
+    </div>
+  `;
+
+  renderComments(post.comments || []);
+}
+
+function renderComments(comments){
+  const section=document.getElementById('commentSection');
+  section.innerHTML='';
+
+  if(comments.length===0){
+    section.innerHTML='<div class="meta">아직 댓글이 없습니다.</div>';
+    return;
+  }
+
+  comments.forEach(c=>{
+    const div=document.createElement('div');
+    div.style.marginBottom='10px';
+    div.innerHTML=`<div class="meta">${c.nickname} · ${c.date}</div><div>${c.text}</div>`;
+    section.appendChild(div);
+  });
+}
+
+window.goBack=function(){
+  selectedPostKey=null;
+  renderPosts();
 }
 </script>
 
