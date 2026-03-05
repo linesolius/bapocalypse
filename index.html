@@ -13,28 +13,17 @@ header{background:#111411;padding:20px 40px;border-bottom:1px solid #2aff00}
 nav{margin-top:10px}
 nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin-right:6px;cursor:pointer}
 nav button:hover{box-shadow:0 0 8px #2aff00}
-
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
-
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
-
 .card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer;transition:.2s}
 .card:hover{box-shadow:0 0 10px #2aff00;transform:translateY(-2px)}
-
 .meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
-
 textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px}
-
 .action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:6px 4px 6px 0;cursor:pointer}
 .action-btn:hover{box-shadow:0 0 10px #2aff00}
-
 .comment{margin-top:15px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,.2)}
 .reply{margin-left:25px;margin-top:10px;padding:10px;background:#0c140c;border:1px solid rgba(0,255,0,.2)}
-
-.reply-box{display:none;margin-top:10px}
-
 .uploaded-image{max-width:100%;margin-top:15px;border:1px solid #2aff00}
-
 footer{text-align:center;padding:40px 0;opacity:.6}
 hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 </style>
@@ -46,13 +35,26 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 <h1>Nuclear Community</h1>
 <button class="write-btn" onclick="location.hash='write'">게시하기</button>
 </div>
+
+<nav>
+<button onclick="filterCategory('all')">전체</button>
+<button onclick="filterCategory('공지')">공지</button>
+<button onclick="filterCategory('잡담')">잡담</button>
+<button onclick="filterCategory('정보')">정보</button>
+<button onclick="filterCategory('질문')">질문</button>
+<button onclick="filterCategory('거래')">거래</button>
+<button onclick="filterCategory('도움')">도움</button>
+</nav>
 </header>
 
 <div class="container" id="postList"></div>
+<footer>© 2033 Nuclear Community</footer>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const MASTER_PASSWORD="porygon2007";
 
@@ -68,20 +70,35 @@ appId:"1:1081865580697:web:6ff7e5b838cdbde397c808"
 
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
+const storage=getStorage(app);
+
 const postsRef=ref(db,'posts');
 
 let allPosts={};
+let currentCategory='all';
 
 window.addEventListener('hashchange',handleRouting);
 
 function handleRouting(){
+
 const hash=location.hash.replace('#','');
+
+if(hash==='write'){
+renderWritePage();
+return;
+}
 
 if(hash.startsWith('post-')){
 renderDetail(hash.replace('post-',''));
 return;
 }
 
+renderList();
+
+}
+
+window.filterCategory=function(category){
+currentCategory=category;
 renderList();
 }
 
@@ -95,7 +112,21 @@ function renderList(){
 const container=document.getElementById('postList');
 container.innerHTML='';
 
-Object.entries(allPosts).reverse().forEach(([key,post])=>{
+const postsArray=Object.entries(allPosts);
+
+postsArray.sort((a,b)=>{
+
+if((b[1].notice||false)!==(a[1].notice||false)){
+return (b[1].notice?1:0)-(a[1].notice?1:0);
+}
+
+return (b[1].date||0)-(a[1].date||0);
+
+});
+
+postsArray.forEach(([key,post])=>{
+
+if(currentCategory!=='all' && post.category!==currentCategory) return;
 
 const card=document.createElement('div');
 card.className='card';
@@ -103,7 +134,7 @@ card.className='card';
 card.onclick=()=>{location.hash='post-'+key}
 
 card.innerHTML=`
-<div class='meta'>${post.nickname}</div>
+<div class='meta'>${post.notice?'📌':''}[${post.category}] ${escapeHTML(post.nickname)}</div>
 <h3>${escapeHTML(post.title)}</h3>
 <div>${escapeHTML(post.content).slice(0,120)}...</div>
 `;
@@ -119,31 +150,41 @@ function renderDetail(key){
 const post=allPosts[key];
 const container=document.getElementById('postList');
 
+if(!post){container.innerHTML='존재하지 않는 글';return}
+
 let commentHTML='';
 
 if(post.comments){
 
 Object.entries(post.comments).forEach(([cid,c])=>{
 
-commentHTML+=`<div class='comment'>
+commentHTML+=`
+<div class='comment'>
+
 <b>${escapeHTML(c.nickname)}</b>
 <div>${escapeHTML(c.content)}</div>
 
 <button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
+<button class='action-btn' onclick="deleteComment('${key}','${cid}')">삭제</button>
 
-<div class='reply-box' id='reply-${cid}'>
-<input placeholder='닉네임' id='r_nick_${cid}'>
-<input type='password' placeholder='비밀번호' id='r_pass_${cid}'>
-<textarea placeholder='답글' id='r_content_${cid}'></textarea>
-<button class='action-btn' onclick="submitReply('${key}','${cid}')">작성</button>
+<div id="replyBox-${cid}" style="display:none">
+
+<input id="r_nick-${cid}" placeholder="닉네임">
+<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
+<textarea id="r_content-${cid}" placeholder="답글"></textarea>
+
+<button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
+
 </div>
 `;
 
 if(c.replies){
 Object.entries(c.replies).forEach(([rid,r])=>{
-commentHTML+=`<div class='reply'>
+commentHTML+=`
+<div class='reply'>
 <b>${escapeHTML(r.nickname)}</b>
 <div>${escapeHTML(r.content)}</div>
+<button class='action-btn' onclick="deleteReply('${key}','${cid}','${rid}')">삭제</button>
 </div>`;
 });
 }
@@ -169,7 +210,7 @@ container.innerHTML=`
 
 <input id='c_nick' placeholder='닉네임'>
 <input id='c_pass' type='password' placeholder='비밀번호'>
-<textarea id='c_content'></textarea>
+<textarea id='c_content' placeholder='댓글'></textarea>
 
 <button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
 
@@ -185,42 +226,92 @@ const nick=c_nick.value;
 const pass=c_pass.value;
 const content=c_content.value;
 
-if(!nick||!pass||!content)return;
+if(!nick||!pass||!content){alert('댓글 입력');return}
 
-push(ref(db,'posts/'+postKey+'/comments'),{
-nickname:nick,
-password:pass,
-content
-});
+const commentRef=ref(db,'posts/'+postKey+'/comments');
+
+push(commentRef,{nickname:nick,password:pass,content,date:Date.now()});
+
+c_content.value="";
+
+location.hash='post-'+postKey;
 
 }
 
-window.toggleReply=function(cid){
+window.toggleReply=function(commentKey){
 
-const box=document.getElementById('reply-'+cid);
+const box=document.getElementById("replyBox-"+commentKey);
 
-box.style.display=box.style.display==='block'?'none':'block';
+if(box.style.display==="none"){
+box.style.display="block";
+}else{
+box.style.display="none";
+}
 
 }
 
 window.submitReply=function(postKey,commentKey){
 
-const nick=document.getElementById('r_nick_'+commentKey).value;
-const pass=document.getElementById('r_pass_'+commentKey).value;
-const content=document.getElementById('r_content_'+commentKey).value;
+const nick=document.getElementById("r_nick-"+commentKey).value;
+const pass=document.getElementById("r_pass-"+commentKey).value;
+const content=document.getElementById("r_content-"+commentKey).value;
 
-if(!nick||!pass||!content)return;
+if(!nick||!pass||!content){
+alert("답글 입력");
+return;
+}
 
-push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
+const replyRef=ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies');
+
+push(replyRef,{
 nickname:nick,
 password:pass,
-content
+content:content,
+date:Date.now()
 });
+
+location.hash='post-'+postKey;
+
+}
+
+window.deleteComment=function(postKey,commentKey){
+
+const pass=prompt('비밀번호');
+
+const comment=allPosts[postKey].comments[commentKey];
+
+if(pass!==comment.password && pass!==MASTER_PASSWORD){
+alert('비밀번호 틀림');
+return;
+}
+
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey));
+
+}
+
+window.deleteReply=function(postKey,commentKey,replyKey){
+
+const pass=prompt('비밀번호');
+
+const reply=allPosts[postKey].comments[commentKey].replies[replyKey];
+
+if(pass!==reply.password && pass!==MASTER_PASSWORD){
+alert('비밀번호 틀림');
+return;
+}
+
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey));
 
 }
 
 function escapeHTML(str){
-return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+if(!str) return "";
+return str
+.replaceAll('&','&amp;')
+.replaceAll('<','&lt;')
+.replaceAll('>','&gt;')
+.replaceAll('"','&quot;')
+.replaceAll("'","&#039;");
 }
 
 handleRouting();
