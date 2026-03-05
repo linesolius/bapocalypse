@@ -13,18 +13,28 @@ header{background:#111411;padding:20px 40px;border-bottom:1px solid #2aff00}
 nav{margin-top:10px}
 nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin-right:6px;cursor:pointer}
 nav button:hover{box-shadow:0 0 8px #2aff00}
+
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
+
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
-.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer;transition:0.2s}
+
+.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer;transition:.2s}
 .card:hover{box-shadow:0 0 10px #2aff00;transform:translateY(-2px)}
+
 .meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
+
 textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px}
+
 .action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:6px 4px 6px 0;cursor:pointer}
 .action-btn:hover{box-shadow:0 0 10px #2aff00}
-.reply{margin-left:25px;margin-top:8px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,0.2)}
+
+.comment{margin-top:15px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,.2)}
+.reply{margin-left:25px;margin-top:10px;padding:10px;background:#0c140c;border:1px solid rgba(0,255,0,.2)}
+
 .uploaded-image{max-width:100%;margin-top:15px;border:1px solid #2aff00}
-footer{text-align:center;padding:40px 0;opacity:0.6}
-hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
+
+footer{text-align:center;padding:40px 0;opacity:.6}
+hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 </style>
 </head>
 <body>
@@ -34,6 +44,7 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
 <h1>Nuclear Community</h1>
 <button class="write-btn" onclick="location.hash='write'">게시하기</button>
 </div>
+
 <nav>
 <button onclick="filterCategory('all')">전체</button>
 <button onclick="filterCategory('공지')">공지</button>
@@ -50,16 +61,25 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const MASTER_PASSWORD="porygon2007";
 
-const firebaseConfig={apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",authDomain:"community-61897.firebaseapp.com",databaseURL:"https://community-61897-default-rtdb.firebaseio.com",projectId:"community-61897",storageBucket:"community-61897.appspot.com",messagingSenderId:"1081865580697",appId:"1:1081865580697:web:6ff7e5b838cdbde397c808"};
+const firebaseConfig={
+apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
+authDomain:"community-61897.firebaseapp.com",
+databaseURL:"https://community-61897-default-rtdb.firebaseio.com",
+projectId:"community-61897",
+storageBucket:"community-61897.appspot.com",
+messagingSenderId:"1081865580697",
+appId:"1:1081865580697:web:6ff7e5b838cdbde397c808"
+};
 
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 const storage=getStorage(app);
+
 const postsRef=ref(db,'posts');
 
 let allPosts={};
@@ -68,217 +88,296 @@ let currentCategory='all';
 window.addEventListener('hashchange',handleRouting);
 
 function handleRouting(){
- const hash=location.hash.replace('#','');
- if(hash==='write'){renderWritePage();return}
- if(hash.startsWith('post-')){renderDetail(hash.replace('post-',''));return}
- renderList();
+
+const hash=location.hash.replace('#','');
+
+if(hash==='write'){
+renderWritePage();
+return;
 }
 
-window.filterCategory=c=>{currentCategory=c;renderList()}
+if(hash.startsWith('post-')){
+renderDetail(hash.replace('post-',''));
+return;
+}
 
-onValue(postsRef,snap=>{allPosts=snap.val()||{};handleRouting()});
+renderList();
 
-/* 목록 */
+}
+
+window.filterCategory=function(category){
+currentCategory=category;
+renderList();
+}
+
+onValue(postsRef,(snap)=>{
+allPosts=snap.val()||{};
+renderList();
+});
+
 function renderList(){
- const container=document.getElementById('postList');
- container.innerHTML='';
 
- const posts=Object.entries(allPosts);
+const container=document.getElementById('postList');
+container.innerHTML='';
 
- const pinned=posts.filter(([k,p])=>p.pinned);
- const normal=posts.filter(([k,p])=>!p.pinned);
+const postsArray=Object.entries(allPosts);
 
- const ordered=[...pinned,...normal.reverse()];
+postsArray.sort((a,b)=>{
+if((b[1].notice||false)!==(a[1].notice||false)){
+return (b[1].notice?1:0)-(a[1].notice?1:0);
+}
+return (b[1].date||0)-(a[1].date||0);
+});
 
- ordered.forEach(([key,post])=>{
- if(currentCategory!=='all' && post.category!==currentCategory) return;
+postsArray.forEach(([key,post])=>{
 
- const card=document.createElement('div');
- card.className='card';
- card.onclick=()=>location.hash='post-'+key;
+if(currentCategory!=='all' && post.category!==currentCategory) return;
 
- card.innerHTML=`
- <div class='meta'>[${post.category}] ${post.nickname}${post.pinned?' 📌':''}</div>
- <h3>${escapeHTML(post.title)}</h3>
- <div>${escapeHTML(post.content).slice(0,120)}...</div>`;
+const card=document.createElement('div');
+card.className='card';
 
- container.appendChild(card);
- })
+card.onclick=()=>{location.hash='post-'+key}
+
+card.innerHTML=`
+<div class='meta'>${post.notice?'📌':''}[${post.category}] ${escapeHTML(post.nickname)}</div>
+<h3>${escapeHTML(post.title)}</h3>
+<div>${escapeHTML(post.content).slice(0,120)}...</div>
+`;
+
+container.appendChild(card);
+
+});
+
 }
 
-/* 상세 */
 function renderDetail(key){
- const post=allPosts[key];
- const container=document.getElementById('postList');
- if(!post){container.innerHTML="<div class='card'>존재하지 않는 글</div>";return}
 
- let imageHTML='';
- if(post.images){post.images.forEach(u=>imageHTML+=`<img src="${u}" class="uploaded-image">`)}
+const post=allPosts[key];
+const container=document.getElementById('postList');
 
- let fileHTML='';
- if(post.files){post.files.forEach(f=>fileHTML+=`<div>📎 <a href="${f.url}" target="_blank">${f.name}</a></div>`)}
+if(!post){container.innerHTML='존재하지 않는 글';return}
 
- let commentHTML='';
- if(post.comments){
- Object.entries(post.comments).forEach(([cid,c])=>{
- commentHTML+=renderComment(key,cid,c);
- })
- }
+let imageHTML='';
 
- container.innerHTML=`
- <div class='card' style="cursor:default">
- <button class='action-btn' onclick="location.hash=''">목록</button>
- <div class='meta'>${post.category} | ${post.nickname}</div>
- <h2>${escapeHTML(post.title)}</h2>
- <p>${escapeHTML(post.content)}</p>
- ${imageHTML}
- <hr>
- ${fileHTML}
- <hr>
- <button class='action-btn' onclick="editPost('${key}')">수정</button>
- <button class='action-btn' onclick="deletePost('${key}')">삭제</button>
- <button class='action-btn' onclick="togglePin('${key}')">공지고정</button>
- <hr>
- <h3>댓글</h3>
- <input id="c_nick" placeholder="닉네임">
- <input id="c_pass" type="password" placeholder="비밀번호">
- <textarea id="c_text" placeholder="댓글"></textarea>
- <button class="action-btn" onclick="addComment('${key}')">댓글 작성</button>
- ${commentHTML}
- </div>`
+if(post.images){
+post.images.forEach(url=>{
+imageHTML+=`<img src="${url}" class="uploaded-image">`
+});
 }
 
-function renderComment(postKey,cid,c){
- let replies='';
- if(c.replies){
- Object.entries(c.replies).forEach(([rid,r])=>{
- replies+=`<div class='reply'><b>${escapeHTML(r.nick)}</b>: ${escapeHTML(r.text)}</div>`
- })
- }
+let fileHTML='';
 
- return `
- <div class='reply'>
- <b>${escapeHTML(c.nick)}</b>: ${escapeHTML(c.text)}
- <div>
- <input id="r_${cid}" placeholder="답글">
- <button class="action-btn" onclick="addReply('${postKey}','${cid}')">답글</button>
- </div>
- ${replies}
- </div>`
+if(post.files){
+post.files.forEach(f=>{
+fileHTML+=`<div>📎 <a href="${f.url}" target="_blank">${f.name}</a></div>`
+});
 }
 
-/* 댓글 */
-window.addComment=async function(postKey){
- const nick=c_nick.value;
- const pass=c_pass.value;
- const text=c_text.value;
- if(!nick||!pass||!text)return alert('입력 필요');
+let commentHTML='';
 
- const commentRef=ref(db,'posts/'+postKey+'/comments');
- await push(commentRef,{nick,pass,text,replies:{}});
+if(post.comments){
 
- c_text.value='';
+Object.entries(post.comments).forEach(([cid,c])=>{
+
+commentHTML+=`<div class='comment'>
+<b>${escapeHTML(c.nickname)}</b>
+<div>${escapeHTML(c.content)}</div>
+<button class='action-btn' onclick="replyForm('${key}','${cid}')">답글</button>
+<button class='action-btn' onclick="deleteComment('${key}','${cid}')">삭제</button>
+`;
+
+if(c.replies){
+Object.entries(c.replies).forEach(([rid,r])=>{
+commentHTML+=`<div class='reply'>
+<b>${escapeHTML(r.nickname)}</b>
+<div>${escapeHTML(r.content)}</div>
+<button class='action-btn' onclick="deleteReply('${key}','${cid}','${rid}')">삭제</button>
+</div>`
+});
 }
 
-/* 답글 */
-window.addReply=async function(postKey,cid){
- const text=document.getElementById('r_'+cid).value;
- if(!text)return;
+commentHTML+='</div>';
 
- const replyRef=ref(db,'posts/'+postKey+'/comments/'+cid+'/replies');
- await push(replyRef,{nick:'익명',text});
+});
+
 }
 
-/* 글 작성 */
-function renderWritePage(){
- const container=document.getElementById('postList');
- container.innerHTML=`
- <div class='card' style="cursor:default">
- <button class='action-btn' onclick="location.hash=''">목록</button>
- <h2>게시글 작성</h2>
- <select id="w_category">
- <option value="공지">공지</option>
- <option value="잡담">잡담</option>
- <option value="정보">정보</option>
- <option value="질문">질문</option>
- <option value="거래">거래</option>
- <option value="도움">도움</option>
- </select>
- <input id="w_title" placeholder="제목">
- <input id="w_nick" placeholder="닉네임">
- <input id="w_pass" type="password" placeholder="비밀번호">
- <textarea id="w_content" rows="6" placeholder="내용"></textarea>
- <label>이미지 업로드</label>
- <input type="file" id="w_images" multiple accept="image/*">
- <label>파일 업로드</label>
- <input type="file" id="w_files" multiple>
- <button class="action-btn" onclick="submitPost()">게시</button>
- </div>`
+container.innerHTML=`
+<div class='card' style="cursor:default">
+
+<button class='action-btn' onclick="location.hash=''">목록</button>
+
+<div class='meta'>${post.category} | ${post.nickname}</div>
+
+<h2>${escapeHTML(post.title)}</h2>
+
+<p>${escapeHTML(post.content)}</p>
+
+${imageHTML}
+
+<hr>
+
+${fileHTML}
+
+<hr>
+
+<h3>댓글</h3>
+
+<input id='c_nick' placeholder='닉네임'>
+<input id='c_pass' type='password' placeholder='비밀번호'>
+<textarea id='c_content' placeholder='댓글'></textarea>
+
+<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
+
+${commentHTML}
+
+</div>`;
+
 }
 
 window.submitPost=async function(){
- const title=w_title.value;
- const nickname=w_nick.value;
- const password=w_pass.value;
- const content=w_content.value;
- const category=w_category.value;
- if(!title||!nickname||!password||!content)return alert('모든 필드 입력');
 
- const imageURLs=[]; const fileData=[];
+const title=w_title.value;
+const nickname=w_nick.value;
+const password=w_pass.value;
+const content=w_content.value;
+const category=w_category.value;
 
- for(let file of w_images.files){
- const storageRef=sRef(storage,'images/'+Date.now()+file.name);
- await uploadBytes(storageRef,file);
- const url=await getDownloadURL(storageRef);
- imageURLs.push(url);
- }
+if(!title||!nickname||!password||!content){alert('모든 필드 입력');return}
 
- for(let file of w_files.files){
- const storageRef=sRef(storage,'files/'+Date.now()+file.name);
- await uploadBytes(storageRef,file);
- const url=await getDownloadURL(storageRef);
- fileData.push({name:file.name,url});
- }
+const imageURLs=[];
+const fileData=[];
 
- await push(postsRef,{title,nickname,password,content,category,images:imageURLs,files:fileData,comments:{},pinned:false});
+for(let file of w_images.files){
 
- location.hash='';
- handleRouting();
+if(file.size>5*1024*1024){alert('이미지 5MB 이하');return}
+
+const storageRef=sRef(storage,'images/'+Date.now()+file.name);
+await uploadBytes(storageRef,file);
+const url=await getDownloadURL(storageRef);
+imageURLs.push(url);
+
 }
 
-/* 수정 */
-window.editPost=function(key){
- const post=allPosts[key];
- const pass=prompt('비밀번호');
- if(pass!==post.password && pass!==MASTER_PASSWORD)return alert('비밀번호 오류');
-
- const newTitle=prompt('새 제목',post.title);
- const newContent=prompt('새 내용',post.content);
-
- update(ref(db,'posts/'+key),{title:newTitle,content:newContent});
+for(let file of w_files.files){
+const storageRef=sRef(storage,'files/'+Date.now()+file.name);
+await uploadBytes(storageRef,file);
+const url=await getDownloadURL(storageRef);
+fileData.push({name:file.name,url});
 }
 
-/* 공지 고정 */
-window.togglePin=function(key){
- const pass=prompt('마스터 비밀번호');
- if(pass!==MASTER_PASSWORD)return alert('관리자만 가능');
+await push(postsRef,{
+title,nickname,password,content,category,
+notice:false,
+date:Date.now(),
+images:imageURLs,
+files:fileData
+});
 
- const post=allPosts[key];
- update(ref(db,'posts/'+key),{pinned:!post.pinned});
+location.hash='';
+
 }
 
-/* 삭제 */
-window.deletePost=function(key){
- const pass=prompt('비밀번호');
- const post=allPosts[key];
- if(pass!==post.password && pass!==MASTER_PASSWORD)return alert('비밀번호 오류');
- remove(ref(db,'posts/'+key));
- location.hash='';
+function renderWritePage(){
+
+const container=document.getElementById('postList');
+
+container.innerHTML=`
+<div class='card' style="cursor:default">
+
+<button class='action-btn' onclick="location.hash=''">목록</button>
+
+<h2>게시글 작성</h2>
+
+<select id="w_category">
+<option value="공지">공지</option>
+<option value="잡담">잡담</option>
+<option value="정보">정보</option>
+<option value="질문">질문</option>
+<option value="거래">거래</option>
+<option value="도움">도움</option>
+</select>
+
+<input id="w_title" placeholder="제목">
+<input id="w_nick" placeholder="닉네임">
+<input id="w_pass" type="password" placeholder="비밀번호">
+<textarea id="w_content" rows="6" placeholder="내용"></textarea>
+
+<label>이미지 업로드</label>
+<input type="file" id="w_images" multiple accept="image/*">
+
+<label>파일 업로드</label>
+<input type="file" id="w_files" multiple>
+
+<label>공지 고정</label>
+<input type="checkbox" id="w_notice">
+
+<button class="action-btn" onclick="submitPost()">게시</button>
+
+</div>`;
+
 }
 
-/* XSS 방지 */
+window.submitComment=function(postKey){
+
+const nick=c_nick.value;
+const pass=c_pass.value;
+const content=c_content.value;
+
+if(!nick||!pass||!content){alert('댓글 입력');return}
+
+const commentRef=ref(db,'posts/'+postKey+'/comments');
+
+push(commentRef,{nickname:nick,password:pass,content});
+
+}
+
+window.replyForm=function(postKey,commentKey){
+
+const text=prompt('답글');
+const nick=prompt('닉네임');
+const pass=prompt('비밀번호');
+
+if(!text||!nick||!pass)return;
+
+const replyRef=ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies');
+
+push(replyRef,{nickname:nick,password:pass,content:text});
+
+}
+
+window.deleteComment=function(postKey,commentKey){
+
+const pass=prompt('비밀번호');
+
+const comment=allPosts[postKey].comments[commentKey];
+
+if(pass!==comment.password && pass!==MASTER_PASSWORD){
+alert('비밀번호 틀림');
+return;
+}
+
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey));
+
+}
+
+window.deleteReply=function(postKey,commentKey,replyKey){
+
+const pass=prompt('비밀번호');
+
+const reply=allPosts[postKey].comments[commentKey].replies[replyKey];
+
+if(pass!==reply.password && pass!==MASTER_PASSWORD){
+alert('비밀번호 틀림');
+return;
+}
+
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey));
+
+}
+
 function escapeHTML(str){
- return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 }
 
 handleRouting();
