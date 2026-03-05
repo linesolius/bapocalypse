@@ -23,6 +23,8 @@ textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px s
 hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 .time{font-size:11px;color:#6cff3c;margin-top:5px;}
 .comment-count{font-size:12px;color:#7dff4f;margin-top:6px;}
+.post-image{max-width:100%;margin-top:10px;border-radius:6px;}
+.comment-image{max-width:200px;margin-top:6px;border-radius:6px;}
 </style>
 </head>
 
@@ -52,10 +54,10 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const ADMIN_CODE="torso1989";
-const MASTER_DELETE_CODE="porygon2007";
+const ADMIN_CODE="torso1989"
+const MASTER_DELETE_CODE="porygon2007"
 
 const firebaseConfig={
 apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
@@ -65,11 +67,11 @@ projectId:"community-61897",
 storageBucket:"community-61897.appspot.com",
 messagingSenderId:"1081865580697",
 appId:"1:1081865580697:web:6ff7e5b838cdbde397c808"
-};
+}
 
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
-const postsRef=ref(db,'posts');
+const app=initializeApp(firebaseConfig)
+const db=getDatabase(app)
+const postsRef=ref(db,'posts')
 
 let allPosts={}
 let currentCategory='all'
@@ -92,7 +94,7 @@ renderList()
 function countComments(post){
 let count=0
 if(!post.comments) return 0
-Object.values(post.comments).forEach(c=>{
+Object.entries(post.comments).forEach(([cid,c])=>{
 count++
 if(c.replies){
 count+=Object.keys(c.replies).length
@@ -104,7 +106,6 @@ return count
 window.renderList=function(){
 
 currentPostKey=null
-
 const container=document.getElementById('postList')
 container.innerHTML=''
 
@@ -136,7 +137,6 @@ card.innerHTML=`
 <div>${escapeHTML(post.content).slice(0,120)}...</div>
 <div class="time">${formatTime(post.date)}</div>
 <div class="comment-count">댓글 ${commentCount}</div>
-<button class="action-btn" onclick="deletePost('${key}','${post.password}')">삭제</button>
 `
 
 container.appendChild(card)
@@ -172,16 +172,15 @@ container.innerHTML=`
 <input id="w_nick" placeholder="닉네임">
 <input id="w_pass" type="password" placeholder="비밀번호">
 <input id="w_title" placeholder="제목">
-
 <textarea id="w_content" placeholder="내용"></textarea>
+
+<input id="w_image" placeholder="이미지 링크 (선택)">
 
 <button class="action-btn" onclick="submitPost()">게시하기</button>
 <button class="action-btn" onclick="renderList()">취소</button>
 
 </div>
-
 `
-
 }
 
 window.submitPost=function(){
@@ -201,18 +200,17 @@ nickname:w_nick.value,
 password:w_pass.value,
 title:w_title.value,
 content:w_content.value,
+image:w_image.value || "",
 pinned:w_pin.checked,
 date:Date.now()
 })
 
 renderList()
-
 }
 
 function renderDetail(key){
 
 currentPostKey=key
-
 const post=allPosts[key]
 const container=document.getElementById('postList')
 
@@ -226,18 +224,17 @@ commentHTML+=`
 <div class='comment'>
 <b>${escapeHTML(c.nickname)}</b>
 <div>${escapeHTML(c.content)}</div>
+${c.image?`<img src="${c.image}" class="comment-image">`:""}
 <div class="time">${formatTime(c.date)}</div>
 
-<button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
+<button class="action-btn" onclick="deleteComment('${key}','${cid}','${c.password}')">삭제</button>
+<button class="action-btn" onclick="toggleReply('${cid}')">답글</button>
 
 <div id="replyBox-${cid}" style="display:none">
-
 <input id="r_nick-${cid}" placeholder="닉네임">
 <input id="r_pass-${cid}" type="password" placeholder="비밀번호">
 <textarea id="r_content-${cid}" placeholder="답글"></textarea>
-
 <button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
-
 </div>
 `
 
@@ -248,6 +245,7 @@ commentHTML+=`
 <b>${escapeHTML(r.nickname)}</b>
 <div>${escapeHTML(r.content)}</div>
 <div class="time">${formatTime(r.date)}</div>
+<button class="action-btn" onclick="deleteReply('${key}','${cid}','${rid}','${r.password}')">삭제</button>
 </div>
 `
 })
@@ -264,16 +262,19 @@ container.innerHTML=`
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="renderList()">목록</button>
+<button class='action-btn' onclick="editPost('${key}')">수정</button>
+<button class='action-btn' onclick="deletePost('${key}','${post.password}')">삭제</button>
 
 <h2>${escapeHTML(post.title)}</h2>
 <p>${escapeHTML(post.content)}</p>
+
+${post.image?`<img src="${post.image}" class="post-image">`:""}
 
 <div class="time">${formatTime(post.date)}</div>
 
 <hr>
 
 <h3>댓글</h3>
-
 ${commentHTML}
 
 <hr>
@@ -283,13 +284,12 @@ ${commentHTML}
 <input id='c_nick' placeholder='닉네임'>
 <input id='c_pass' type='password' placeholder='비밀번호'>
 <textarea id='c_content' placeholder='댓글'></textarea>
+<input id='c_image' placeholder='이미지 링크 (선택)'>
 
 <button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
 
 </div>
-
 `
-
 }
 
 window.submitComment=function(postKey){
@@ -298,14 +298,10 @@ push(ref(db,'posts/'+postKey+'/comments'),{
 nickname:c_nick.value,
 password:c_pass.value,
 content:c_content.value,
+image:c_image.value || "",
 date:Date.now()
 })
 
-}
-
-window.toggleReply=function(cid){
-const box=document.getElementById("replyBox-"+cid)
-box.style.display = box.style.display==="none"?"block":"none"
 }
 
 window.submitReply=function(postKey,commentKey){
@@ -319,20 +315,68 @@ date:Date.now()
 
 }
 
-window.deletePost=function(key,postPassword){
+window.deletePost=function(key,password){
 
-const input=prompt("비밀번호 또는 관리자 삭제코드 입력")
+const input=prompt("비밀번호 또는 관리자 코드 입력")
 
-if(input===postPassword || input===MASTER_DELETE_CODE){
+if(input===password || input===MASTER_DELETE_CODE){
 remove(ref(db,'posts/'+key))
 }else{
-alert("비밀번호가 틀렸습니다")
+alert("비밀번호 틀림")
 }
 
+}
+
+window.deleteComment=function(postKey,commentKey,password){
+
+const input=prompt("비밀번호 또는 관리자 코드 입력")
+
+if(input===password || input===MASTER_DELETE_CODE){
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey))
+}else{
+alert("비밀번호 틀림")
+}
+
+}
+
+window.deleteReply=function(postKey,commentKey,replyKey,password){
+
+const input=prompt("비밀번호 또는 관리자 코드 입력")
+
+if(input===password || input===MASTER_DELETE_CODE){
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey))
+}else{
+alert("비밀번호 틀림")
+}
+
+}
+
+window.editPost=function(key){
+
+const post=allPosts[key]
+const pass=prompt("비밀번호 입력")
+
+if(pass!==post.password && pass!==MASTER_DELETE_CODE){
+alert("비밀번호 틀림")
+return
+}
+
+const newTitle=prompt("새 제목",post.title)
+const newContent=prompt("새 내용",post.content)
+
+update(ref(db,'posts/'+key),{
+title:newTitle,
+content:newContent
+})
+
+}
+
+window.toggleReply=function(cid){
+const box=document.getElementById("replyBox-"+cid)
+box.style.display = box.style.display==="none"?"block":"none"
 }
 
 function formatTime(timestamp){
-if(!timestamp) return ""
 const d=new Date(timestamp)
 return `2033.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
 }
