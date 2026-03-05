@@ -11,19 +11,70 @@ body{background:#0a0d0a;color:#9cff57}
 header{background:#111411;padding:20px 40px;border-bottom:1px solid #2aff00}
 .topbar{display:flex;justify-content:space-between;align-items:center}
 nav{margin-top:10px}
-nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin-right:6px;cursor:pointer}
-nav button:hover{box-shadow:0 0 8px #2aff00}
-.write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
+nav button{
+  background:#132013;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:6px 12px;
+  margin-right:6px;
+  cursor:pointer;
+}
+nav button:hover{ box-shadow:0 0 8px #2aff00; }
+
+.write-btn{
+  background:#1a2a1a;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:8px 14px;
+  cursor:pointer;
+}
+
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
-.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2)}
+
+.card{
+  background:#111611;
+  padding:20px;
+  margin-bottom:20px;
+  border:1px solid rgba(0,255,0,0.2);
+  cursor:pointer;
+  transition:0.2s;
+}
+
+.card:hover{
+  box-shadow:0 0 10px #2aff00;
+  transform:translateY(-2px);
+}
+
 .meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
-textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px}
-.action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:6px 4px 6px 0;cursor:pointer}
-.action-btn:hover{box-shadow:0 0 10px #2aff00}
-.uploaded-image{max-width:100%;margin-top:15px;border:1px solid #2aff00}
+
+textarea,input,select{
+  width:100%;
+  margin-top:10px;
+  background:#0f140f;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:8px;
+}
+
+.action-btn{
+  background:#132013;
+  border:1px solid #2aff00;
+  color:#9cff57;
+  padding:6px 12px;
+  margin:6px 4px 6px 0;
+  cursor:pointer;
+}
+
+.action-btn:hover{ box-shadow:0 0 10px #2aff00; }
+
+.uploaded-image{
+  max-width:100%;
+  margin-top:15px;
+  border:1px solid #2aff00;
+}
+
 footer{text-align:center;padding:40px 0;opacity:0.6}
 hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
-.comment{margin-top:10px;padding:10px;border:1px solid rgba(0,255,0,0.2)}
 </style>
 </head>
 <body>
@@ -50,7 +101,7 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,0.3)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const firebaseConfig={
@@ -74,278 +125,256 @@ let currentCategory='all';
 
 window.addEventListener('hashchange',handleRouting);
 
-function escapeHTML(text){
- const div=document.createElement("div");
- div.textContent=text;
- return div.innerHTML;
-}
-
 function handleRouting(){
- const hash=location.hash.replace('#','');
+  const hash=location.hash.replace('#','');
 
- if(hash==='write'){
-  renderWritePage();
-  return;
- }
+  if(hash==='write'){
+    renderWritePage();
+    return;
+  }
 
- selectedPostKey=hash.startsWith('post-')?hash.replace('post-',''):null;
- render();
+  if(hash.startsWith('post-')){
+    selectedPostKey=hash.replace('post-','');
+    renderDetail(selectedPostKey);
+  }else{
+    selectedPostKey=null;
+    renderList();
+  }
 }
 
-window.filterCategory=cat=>{
- currentCategory=cat;
- renderList();
+window.filterCategory=category=>{
+  currentCategory=category;
+  renderList();
 };
 
-onValue(postsRef,snap=>{
- allPosts=snap.val()||{};
- render();
+onValue(postsRef,(snap)=>{
+  allPosts=snap.val()||{};
+  renderList();
 });
 
-function render(){
- selectedPostKey?renderDetail(selectedPostKey):renderList();
-}
+/* ===================== */
+/* 글 목록 */
+/* ===================== */
 
 function renderList(){
- const container=document.getElementById('postList');
- container.innerHTML='';
+  const container=document.getElementById('postList');
+  container.innerHTML='';
 
- const postsArray=Object.entries(allPosts);
+  Object.entries(allPosts).reverse().forEach(([key,post])=>{
 
- if(postsArray.length===0){
-  container.innerHTML="<div class='card'>게시글이 없습니다.</div>";
-  return;
- }
+    if(currentCategory!=='all' && post.category!==currentCategory) return;
 
- postsArray.sort((a,b)=>{
-  const t1=a[1].time||0;
-  const t2=b[1].time||0;
-  return t2-t1;
- });
+    const card=document.createElement('div');
+    card.className='card';
 
- postsArray.forEach(([key,post])=>{
-  if(currentCategory!=='all' && post.category!==currentCategory) return;
+    card.onclick=()=>{
+      location.hash='post-'+key;
+    };
 
-  const card=document.createElement('div');
-  card.className='card';
+    card.innerHTML=`
+    <div class='meta'>[${post.category}] ${post.nickname}</div>
+    <h3>${escapeHTML(post.title)}</h3>
+    <div>${escapeHTML(post.content).slice(0,120)}...</div>
+    `;
 
-  card.innerHTML=`
-  <div class="meta">[${post.category}] ${escapeHTML(post.nickname)}</div>
-  <h2>${escapeHTML(post.title)}</h2>
-  <p>${escapeHTML(post.content.substring(0,120))}...</p>
-  <div class="meta">조회수 ${post.views||0}</div>
-  <button class="action-btn" onclick="location.hash='post-${key}'">읽기</button>
-  `;
-
-  container.appendChild(card);
- });
+    container.appendChild(card);
+  });
 }
 
-function renderWritePage(){
- const container=document.getElementById('postList');
-
- container.innerHTML=`
- <div class="card">
- <button class="action-btn" onclick="location.hash=''">← 돌아가기</button>
- <h2>게시글 작성</h2>
-
- <select id="w_category">
- <option value="공지">공지</option>
- <option value="잡담">잡담</option>
- <option value="정보">정보</option>
- <option value="질문">질문</option>
- <option value="거래">거래</option>
- <option value="도움">도움</option>
- </select>
-
- <input id="w_title" placeholder="제목">
- <input id="w_nick" placeholder="닉네임">
- <input id="w_pass" type="password" placeholder="비밀번호">
- <textarea id="w_content" rows="6" placeholder="내용"></textarea>
-
- <label>이미지 업로드</label>
- <input type="file" id="w_images" multiple accept="image/*">
-
- <label>파일 업로드</label>
- <input type="file" id="w_files" multiple>
-
- <button class="action-btn" onclick="submitPost()">게시하기</button>
- </div>`;
-}
-
-window.submitPost=async function(){
- const title=w_title.value;
- const nickname=w_nick.value;
- const password=w_pass.value;
- const content=w_content.value;
- const category=w_category.value;
-
- if(!title||!nickname||!password||!content){
-  alert("모든 필드를 입력하세요");
-  return;
- }
-
- const imageURLs=[];
- const fileData=[];
-
- for(let file of w_images.files){
-
-  if(file.size>5*1024*1024){alert("이미지 5MB 이하");return}
-
-  const storageRef=sRef(storage,'images/'+crypto.randomUUID()+"_"+file.name);
-
-  await uploadBytes(storageRef,file);
-
-  const url=await getDownloadURL(storageRef);
-
-  imageURLs.push(url);
- }
-
- for(let file of w_files.files){
-
-  if(file.size>10*1024*1024){alert("파일 10MB 이하");return}
-
-  const storageRef=sRef(storage,'files/'+crypto.randomUUID()+"_"+file.name);
-
-  await uploadBytes(storageRef,file);
-
-  const url=await getDownloadURL(storageRef);
-
-  fileData.push({name:file.name,url});
- }
-
- const encoder=new TextEncoder();
-
- const hashBuffer=await crypto.subtle.digest('SHA-256',encoder.encode(password));
-
- const passwordHash=Array.from(new Uint8Array(hashBuffer))
- .map(b=>b.toString(16).padStart(2,'0')).join('');
-
- await push(postsRef,{
-  title,nickname,content,category,
-  password:passwordHash,
-  images:imageURLs,
-  files:fileData,
-  comments:{},
-  time:Date.now(),
-  views:0
- });
-
- location.hash='';
-};
+/* ===================== */
+/* 글 상세 */
+/* ===================== */
 
 function renderDetail(key){
 
- const post=allPosts[key];
+  const post=allPosts[key];
+  const container=document.getElementById('postList');
 
- const container=document.getElementById('postList');
+  if(!post){
+    container.innerHTML="<div class='card'>존재하지 않는 게시글</div>";
+    return;
+  }
 
- if(!post){
-  container.innerHTML="<div class='card'>존재하지 않는 게시글입니다.</div>";
-  return;
- }
+  let imageHTML='';
 
- update(ref(db,'posts/'+key),{views:(post.views||0)+1});
+  if(post.images){
+    post.images.forEach(url=>{
+      imageHTML+=`<img src="${url}" class="uploaded-image">`;
+    });
+  }
 
- let imageHTML='';
+  let fileHTML='';
 
- if(post.images){
-  post.images.forEach(url=>{
-   imageHTML+=`<img src="${url}" class="uploaded-image">`;
-  });
- }
+  if(post.files){
+    post.files.forEach(f=>{
+      fileHTML+=`<div>📎 <a href="${f.url}" target="_blank">${f.name}</a></div>`;
+    });
+  }
 
- let fileHTML='';
+  container.innerHTML=`
+  <div class='card' style="cursor:default">
 
- if(post.files){
-  post.files.forEach(f=>{
-   fileHTML+=`<div>📎 <a href="${f.url}" target="_blank">${escapeHTML(f.name)}</a></div>`;
-  });
- }
+  <button class='action-btn' onclick="location.hash=''">목록</button>
 
- let commentHTML='';
+  <div class='meta'>${post.category} | ${post.nickname}</div>
 
- if(post.comments){
-  Object.values(post.comments).forEach(c=>{
-   commentHTML+=`<div class="comment"><b>${escapeHTML(c.nickname)}</b><br>${escapeHTML(c.text)}</div>`;
-  });
- }
+  <h2>${escapeHTML(post.title)}</h2>
 
- container.innerHTML=`
+  <p>${escapeHTML(post.content)}</p>
 
- <div class="card">
+  ${imageHTML}
 
- <button class="action-btn" onclick="location.hash=''">← 목록</button>
+  <hr>
 
- <div class="meta">[${post.category}] ${escapeHTML(post.nickname)}</div>
+  ${fileHTML}
 
- <h2>${escapeHTML(post.title)}</h2>
+  <br>
 
- <p>${escapeHTML(post.content)}</p>
+  <button class='action-btn' onclick="deletePost('${key}')">삭제</button>
 
- <div class="meta">조회수 ${post.views||0}</div>
-
- <hr>
-
- ${imageHTML}
-
- ${fileHTML}
-
- <hr>
-
- <h3>댓글</h3>
-
- ${commentHTML}
-
- <input id="c_nick" placeholder="닉네임">
-
- <textarea id="c_text" placeholder="댓글"></textarea>
-
- <button class="action-btn" onclick="addComment('${key}')">댓글 작성</button>
-
- <hr>
-
- <button class="action-btn" onclick="deletePost('${key}')">삭제</button>
-
- </div>
- `;
+  </div>
+  `;
 }
 
-window.addComment=function(key){
+/* ===================== */
+/* 글 작성 */
+/* ===================== */
 
- const nick=document.getElementById('c_nick').value;
+function renderWritePage(){
 
- const text=document.getElementById('c_text').value;
+  const container=document.getElementById('postList');
 
- if(!nick||!text){alert("입력하세요");return}
+  container.innerHTML=`
+  <div class='card' style="cursor:default">
 
- const commentRef=ref(db,'posts/'+key+'/comments');
+  <button class='action-btn' onclick="location.hash=''">목록</button>
 
- push(commentRef,{nickname:nick,text:text,time:Date.now()});
-};
+  <h2>게시글 작성</h2>
 
-window.deletePost=async function(key){
+  <select id="w_category">
+  <option value="공지">공지</option>
+  <option value="잡담">잡담</option>
+  <option value="정보">정보</option>
+  <option value="질문">질문</option>
+  <option value="거래">거래</option>
+  <option value="도움">도움</option>
+  </select>
 
- const pass=prompt("비밀번호 입력");
+  <input id="w_title" placeholder="제목">
 
- if(!pass) return;
+  <input id="w_nick" placeholder="닉네임">
 
- const encoder=new TextEncoder();
+  <input id="w_pass" type="password" placeholder="비밀번호">
 
- const hashBuffer=await crypto.subtle.digest('SHA-256',encoder.encode(pass));
+  <textarea id="w_content" rows="6" placeholder="내용"></textarea>
 
- const hash=Array.from(new Uint8Array(hashBuffer))
- .map(b=>b.toString(16).padStart(2,'0')).join('');
+  <label>이미지 업로드</label>
 
- if(hash!==allPosts[key].password){
-  alert("비밀번호 틀림");
-  return;
- }
+  <input type="file" id="w_images" multiple accept="image/*">
 
- await remove(ref(db,'posts/'+key));
+  <label>파일 업로드</label>
 
- location.hash='';
-};
+  <input type="file" id="w_files" multiple>
+
+  <button class="action-btn" onclick="submitPost()">게시</button>
+
+  </div>`;
+}
+
+window.submitPost=async function(){
+
+  const title=w_title.value;
+  const nickname=w_nick.value;
+  const password=w_pass.value;
+  const content=w_content.value;
+  const category=w_category.value;
+
+  if(!title||!nickname||!password||!content){
+    alert('모든 필드를 입력하세요');
+    return;
+  }
+
+  const imageURLs=[];
+  const fileData=[];
+
+  for(let file of w_images.files){
+
+    const storageRef=sRef(storage,'images/'+Date.now()+file.name);
+
+    await uploadBytes(storageRef,file);
+
+    const url=await getDownloadURL(storageRef);
+
+    imageURLs.push(url);
+
+  }
+
+  for(let file of w_files.files){
+
+    const storageRef=sRef(storage,'files/'+Date.now()+file.name);
+
+    await uploadBytes(storageRef,file);
+
+    const url=await getDownloadURL(storageRef);
+
+    fileData.push({name:file.name,url});
+
+  }
+
+  await push(postsRef,{
+    title,nickname,password,content,category,
+    images:imageURLs,
+    files:fileData
+  });
+
+  location.hash='';
+  handleRouting();
+
+}
+
+/* ===================== */
+/* 삭제 */
+/* ===================== */
+
+window.deletePost=function(key){
+
+  const pass=prompt('비밀번호 입력');
+
+  if(!pass) return;
+
+  const post=allPosts[key];
+
+  if(pass!==post.password){
+
+    alert('비밀번호가 틀렸습니다');
+
+    return;
+
+  }
+
+  remove(ref(db,'posts/'+key));
+
+  location.hash='';
+
+}
+
+/* ===================== */
+/* XSS 방지 */
+/* ===================== */
+
+function escapeHTML(str){
+
+  return str
+
+  .replaceAll('&','&amp;')
+
+  .replaceAll('<','&lt;')
+
+  .replaceAll('>','&gt;');
+
+}
+
+handleRouting();
 
 </script>
 </body>
