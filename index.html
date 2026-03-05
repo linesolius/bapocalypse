@@ -112,40 +112,53 @@ const postsRef=ref(db,'posts');
 let allPosts={};
 let currentCategory='all';
 let deleteTarget=null;
+let currentPostKey=null;
 
 window.filterCategory=function(category){
 currentCategory=category;
+currentPostKey=null;
 renderList();
 }
 
 onValue(postsRef,(snap)=>{
 allPosts=snap.val()||{};
+if(currentPostKey){
+renderDetail(currentPostKey);
+}else{
 renderList();
+}
 });
 
 function countComments(post){
-
 let count=0;
-
 if(!post.comments) return 0;
-
 Object.values(post.comments).forEach(c=>{
 count++;
 if(c.replies){
 count+=Object.keys(c.replies).length;
 }
 });
-
 return count;
 }
 
 window.renderList=function(){
 
+currentPostKey=null;
+
 const container=document.getElementById('postList');
 container.innerHTML='';
 
 const postsArray=Object.entries(allPosts);
-postsArray.sort((a,b)=> (b[1].date||0)-(a[1].date||0));
+
+postsArray.sort((a,b)=>{
+
+if((b[1].pinned||false)!==(a[1].pinned||false)){
+return (b[1].pinned?1:0)-(a[1].pinned?1:0);
+}
+
+return (b[1].date||0)-(a[1].date||0);
+
+});
 
 postsArray.forEach(([key,post])=>{
 
@@ -159,7 +172,7 @@ card.onclick=()=>renderDetail(key);
 
 card.innerHTML=`
 <div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
-<h3>${escapeHTML(post.title)}</h3>
+<h3>${post.pinned?'📌 ':''}${escapeHTML(post.title)}</h3>
 <div>${escapeHTML(post.content).slice(0,120)}...</div>
 <div class="time">${formatTime(post.date)}</div>
 <div class="comment-count">댓글 ${commentCount}</div>
@@ -172,6 +185,8 @@ container.appendChild(card);
 }
 
 window.renderWrite=function(){
+
+currentPostKey=null;
 
 const container=document.getElementById('postList');
 
@@ -189,6 +204,10 @@ container.innerHTML=`
 <option>거래</option>
 <option>도움</option>
 </select>
+
+<label style="display:block;margin-top:10px">
+<input type="checkbox" id="w_pin"> 공지 상단 고정
+</label>
 
 <input id="w_nick" placeholder="닉네임">
 <input id="w_pass" type="password" placeholder="비밀번호">
@@ -213,6 +232,7 @@ nickname:w_nick.value,
 password:w_pass.value,
 title:w_title.value,
 content:w_content.value,
+pinned:w_pin.checked,
 date:Date.now()
 });
 
@@ -220,7 +240,11 @@ renderList();
 
 }
 
+/* 이하 원래 코드 그대로 */
+
 function renderDetail(key){
+
+currentPostKey=key;
 
 const post=allPosts[key];
 const container=document.getElementById('postList');
@@ -305,6 +329,8 @@ ${commentHTML}
 `;
 
 }
+
+/* 이하 기존 코드 동일 */
 
 window.submitComment=function(postKey){
 
