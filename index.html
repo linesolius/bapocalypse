@@ -21,8 +21,25 @@ textarea,input{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2
 .comment{margin-top:15px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,.2)}
 .reply{margin-left:25px;margin-top:10px;padding:10px;background:#0c140c;border:1px solid rgba(0,255,0,.2)}
 hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
-.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center}
-.modal-box{background:#111611;padding:25px;border:1px solid #2aff00;width:300px}
+
+.modal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.8);
+display:none;
+align-items:center;
+justify-content:center;
+}
+
+.modal-box{
+background:#111611;
+padding:25px;
+border:1px solid #2aff00;
+width:300px;
+}
 </style>
 </head>
 
@@ -49,11 +66,16 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 
 <div id="passwordModal" class="modal">
 <div class="modal-box">
+
 <h3>비밀번호 입력</h3>
+
 <input type="password" id="modalPassword">
+
 <br><br>
+
 <button class="action-btn" onclick="confirmPassword()">확인</button>
 <button class="action-btn" onclick="closePasswordModal()">취소</button>
+
 </div>
 </div>
 
@@ -85,19 +107,6 @@ let currentCategory='all';
 let deleteTarget=null;
 
 window.addEventListener('hashchange',handleRouting);
-
-function formatDate(time){
-
-const d=new Date(time);
-
-const m=String(d.getMonth()+1).padStart(2,'0');
-const day=String(d.getDate()).padStart(2,'0');
-const h=String(d.getHours()).padStart(2,'0');
-const min=String(d.getMinutes()).padStart(2,'0');
-
-return `2033-${m}-${day} ${h}:${min}`;
-
-}
 
 function handleRouting(){
 
@@ -139,9 +148,7 @@ card.className='card';
 card.onclick=()=>{location.hash='post-'+key}
 
 card.innerHTML=`
-<div class='meta'>
-[${post.category}] ${escapeHTML(post.nickname)} | ${formatDate(post.date)}
-</div>
+<div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
 <h3>${escapeHTML(post.title)}</h3>
 <div>${escapeHTML(post.content).slice(0,120)}...</div>
 `;
@@ -168,9 +175,6 @@ Object.entries(post.comments).forEach(([cid,c])=>{
 commentHTML+=`
 <div class='comment'>
 <b>${escapeHTML(c.nickname)}</b>
-<span style="font-size:11px;color:#5eff2a">
-${formatDate(c.date)}
-</span>
 <div>${escapeHTML(c.content)}</div>
 
 <button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
@@ -189,9 +193,6 @@ Object.entries(c.replies).forEach(([rid,r])=>{
 commentHTML+=`
 <div class='reply'>
 <b>${escapeHTML(r.nickname)}</b>
-<span style="font-size:11px;color:#5eff2a">
-${formatDate(r.date)}
-</span>
 <div>${escapeHTML(r.content)}</div>
 <button class='action-btn' onclick="openPasswordModal('reply','${key}','${cid}','${rid}')">삭제</button>
 </div>`;
@@ -211,10 +212,6 @@ container.innerHTML=`
 <button class='action-btn' onclick="location.hash=''">목록</button>
 <button class='action-btn' onclick="openPasswordModal('editPost','${key}')">수정</button>
 <button class='action-btn' onclick="openPasswordModal('deletePost','${key}')">삭제</button>
-
-<div class='meta'>
-작성자 ${escapeHTML(post.nickname)} | ${formatDate(post.date)}
-</div>
 
 <h2>${escapeHTML(post.title)}</h2>
 <p>${escapeHTML(post.content)}</p>
@@ -282,6 +279,84 @@ password:pass,
 content:content,
 date:Date.now()
 });
+
+}
+
+window.openPasswordModal=function(type,postKey,commentKey,replyKey){
+deleteTarget={type,postKey,commentKey,replyKey};
+document.getElementById("passwordModal").style.display="flex";
+}
+
+window.closePasswordModal=function(){
+document.getElementById("passwordModal").style.display="none";
+modalPassword.value="";
+}
+
+window.confirmPassword=function(){
+
+const pass=modalPassword.value;
+
+if(deleteTarget.type==="deletePost"){
+
+const post=allPosts[deleteTarget.postKey];
+
+if(pass!==post.password && pass!==MASTER_PASSWORD){
+alert("비밀번호 틀림");
+return;
+}
+
+remove(ref(db,'posts/'+deleteTarget.postKey));
+location.hash="";
+}
+
+if(deleteTarget.type==="editPost"){
+
+const post=allPosts[deleteTarget.postKey];
+
+if(pass!==post.password && pass!==MASTER_PASSWORD){
+alert("비밀번호 틀림");
+return;
+}
+
+const newTitle=prompt("새 제목",post.title);
+const newContent=prompt("새 내용",post.content);
+
+if(!newTitle||!newContent) return;
+
+update(ref(db,'posts/'+deleteTarget.postKey),{
+title:newTitle,
+content:newContent
+});
+
+}
+
+if(deleteTarget.type==="comment"){
+
+const comment=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey];
+
+if(pass!==comment.password && pass!==MASTER_PASSWORD){
+alert("비밀번호 틀림");
+return;
+}
+
+remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey));
+
+}
+
+if(deleteTarget.type==="reply"){
+
+const reply=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey].replies[deleteTarget.replyKey];
+
+if(pass!==reply.password && pass!==MASTER_PASSWORD){
+alert("비밀번호 틀림");
+return;
+}
+
+remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey+'/replies/'+deleteTarget.replyKey));
+
+}
+
+closePasswordModal();
 
 }
 
