@@ -40,6 +40,12 @@ padding:25px;
 border:1px solid #2aff00;
 width:300px;
 }
+
+.time{
+font-size:11px;
+color:#6cff3c;
+margin-top:5px;
+}
 </style>
 </head>
 
@@ -151,6 +157,7 @@ card.innerHTML=`
 <div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
 <h3>${escapeHTML(post.title)}</h3>
 <div>${escapeHTML(post.content).slice(0,120)}...</div>
+<div class="time">${formatTime(post.date)}</div>
 `;
 
 container.appendChild(card);
@@ -176,6 +183,7 @@ commentHTML+=`
 <div class='comment'>
 <b>${escapeHTML(c.nickname)}</b>
 <div>${escapeHTML(c.content)}</div>
+<div class="time">${formatTime(c.date)}</div>
 
 <button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
 <button class='action-btn' onclick="openPasswordModal('comment','${key}','${cid}')">삭제</button>
@@ -194,6 +202,7 @@ commentHTML+=`
 <div class='reply'>
 <b>${escapeHTML(r.nickname)}</b>
 <div>${escapeHTML(r.content)}</div>
+<div class="time">${formatTime(r.date)}</div>
 <button class='action-btn' onclick="openPasswordModal('reply','${key}','${cid}','${rid}')">삭제</button>
 </div>`;
 });
@@ -215,6 +224,7 @@ container.innerHTML=`
 
 <h2>${escapeHTML(post.title)}</h2>
 <p>${escapeHTML(post.content)}</p>
+<div class="time">${formatTime(post.date)}</div>
 
 <hr>
 
@@ -279,6 +289,21 @@ password:pass,
 content:content,
 date:Date.now()
 });
+
+}
+
+function formatTime(timestamp){
+
+if(!timestamp) return "";
+
+const d=new Date(timestamp);
+
+const month=String(d.getMonth()+1).padStart(2,'0');
+const day=String(d.getDate()).padStart(2,'0');
+const hour=String(d.getHours()).padStart(2,'0');
+const min=String(d.getMinutes()).padStart(2,'0');
+
+return `2033.${month}.${day} ${hour}:${min}`;
 
 }
 
