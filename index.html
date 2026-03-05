@@ -112,7 +112,7 @@ renderList();
 
 onValue(postsRef,(snap)=>{
 allPosts=snap.val()||{};
-renderList();
+handleRouting();
 });
 
 function renderList(){
@@ -206,6 +206,7 @@ container.innerHTML=`
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="location.hash=''">목록</button>
+<button class='action-btn' onclick="editPost('"+'${key}'+"')">수정</button>
 
 <div class='meta'>${post.category} | ${post.nickname}</div>
 
@@ -345,6 +346,30 @@ const replyRef=ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies');
 push(replyRef,{nickname:nick,password:pass,content:text});
 
 }
+
+window.editPost=function(key){
+
+const post=allPosts[key];
+
+const pass=prompt('비밀번호 입력');
+
+if(pass!==post.password && pass!==MASTER_PASSWORD){
+alert('비밀번호가 틀렸습니다');
+return;
+}
+
+const newTitle=prompt('새 제목',post.title);
+if(newTitle===null) return;
+
+const newContent=prompt('새 내용',post.content);
+if(newContent===null) return;
+
+update(ref(db,'posts/'+key),{
+title:newTitle,
+content:newContent
+});
+
+};
 
 window.deleteComment=function(postKey,commentKey){
 
