@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Nuclear Community</title>
 
 <style>
@@ -12,11 +12,9 @@ header{background:#111411;padding:20px 40px;border-bottom:1px solid #2aff00}
 .topbar{display:flex;justify-content:space-between;align-items:center}
 nav{margin-top:10px}
 nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin-right:6px;cursor:pointer}
-nav button:hover{box-shadow:0 0 8px #2aff00}
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
-.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer;transition:.2s}
-.card:hover{box-shadow:0 0 10px #2aff00;transform:translateY(-2px)}
+.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer}
 .meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
 textarea,input{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px}
 .action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:6px 4px 6px 0;cursor:pointer}
@@ -37,12 +35,11 @@ justify-content:center;
 }
 
 .modal-box{
-background:#111;
+background:#111611;
 padding:25px;
 border:1px solid #2aff00;
 width:300px;
 }
-
 </style>
 </head>
 
@@ -51,25 +48,39 @@ width:300px;
 <header>
 <div class="topbar">
 <h1>Nuclear Community</h1>
+<button class="write-btn" onclick="location.hash='write'">게시하기</button>
 </div>
+
+<nav>
+<button onclick="filterCategory('all')">전체</button>
+<button onclick="filterCategory('공지')">공지</button>
+<button onclick="filterCategory('잡담')">잡담</button>
+<button onclick="filterCategory('정보')">정보</button>
+<button onclick="filterCategory('질문')">질문</button>
+<button onclick="filterCategory('거래')">거래</button>
+<button onclick="filterCategory('도움')">도움</button>
+</nav>
 </header>
 
 <div class="container" id="postList"></div>
 
+<!-- 비밀번호 팝업 -->
 <div id="passwordModal" class="modal">
 <div class="modal-box">
 
 <h3>비밀번호 입력</h3>
 
-<input type="password" id="modalPass">
+<input type="password" id="modalPassword">
 
 <br><br>
 
-<button class="action-btn" onclick="confirmDelete()">확인</button>
-<button class="action-btn" onclick="closeModal()">취소</button>
+<button class="action-btn" onclick="confirmPassword()">확인</button>
+<button class="action-btn" onclick="closePasswordModal()">취소</button>
 
 </div>
 </div>
+
+<footer>© 2033 Nuclear Community</footer>
 
 <script type="module">
 
@@ -93,29 +104,56 @@ const db=getDatabase(app);
 const postsRef=ref(db,'posts');
 
 let allPosts={};
+let currentCategory='all';
+
 let deleteTarget=null;
+
+window.addEventListener('hashchange',handleRouting);
+
+function handleRouting(){
+
+const hash=location.hash.replace('#','');
+
+if(hash.startsWith('post-')){
+renderDetail(hash.replace('post-',''));
+return;
+}
+
+renderList();
+
+}
+
+window.filterCategory=function(category){
+currentCategory=category;
+renderList();
+}
 
 onValue(postsRef,(snap)=>{
 allPosts=snap.val()||{};
-renderList();
+handleRouting();
 });
 
 function renderList(){
 
-const container=document.getElementById("postList");
-container.innerHTML="";
+const container=document.getElementById('postList');
+container.innerHTML='';
 
-Object.entries(allPosts).forEach(([key,post])=>{
+const postsArray=Object.entries(allPosts);
 
-const card=document.createElement("div");
-card.className="card";
+postsArray.sort((a,b)=> (b[1].date||0)-(a[1].date||0));
 
-card.onclick=()=>location.hash="post-"+key;
+postsArray.forEach(([key,post])=>{
+
+if(currentCategory!=='all' && post.category!==currentCategory) return;
+
+const card=document.createElement('div');
+card.className='card';
+card.onclick=()=>{location.hash='post-'+key}
 
 card.innerHTML=`
-<div class="meta">${post.nickname||"익명"}</div>
+<div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
 <h3>${escapeHTML(post.title)}</h3>
-<div>${escapeHTML(post.content).slice(0,120)}</div>
+<div>${escapeHTML(post.content).slice(0,120)}...</div>
 `;
 
 container.appendChild(card);
@@ -124,37 +162,28 @@ container.appendChild(card);
 
 }
 
-window.onhashchange=()=>{
-
-const hash=location.hash.replace("#","");
-
-if(hash.startsWith("post-")){
-
-renderDetail(hash.replace("post-",""));
-
-}
-
-}
-
 function renderDetail(key){
 
 const post=allPosts[key];
-const container=document.getElementById("postList");
+const container=document.getElementById('postList');
 
-let commentHTML="";
+if(!post){container.innerHTML='존재하지 않는 글';return}
+
+let commentHTML='';
 
 if(post.comments){
 
 Object.entries(post.comments).forEach(([cid,c])=>{
 
 commentHTML+=`
-<div class="comment">
+
+<div class='comment'>
 
 <b>${escapeHTML(c.nickname)}</b>
 <div>${escapeHTML(c.content)}</div>
 
-<button class="action-btn" onclick="toggleReply('${cid}')">답글</button>
-<button class="action-btn" onclick="openDelete('comment','${key}','${cid}')">삭제</button>
+<button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
+<button class='action-btn' onclick="openPasswordModal('comment','${key}','${cid}')">삭제</button>
 
 <div id="replyBox-${cid}" style="display:none">
 
@@ -165,28 +194,21 @@ commentHTML+=`
 <button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
 
 </div>
+
 `;
 
 if(c.replies){
-
 Object.entries(c.replies).forEach(([rid,r])=>{
-
 commentHTML+=`
-<div class="reply">
-
+<div class='reply'>
 <b>${escapeHTML(r.nickname)}</b>
 <div>${escapeHTML(r.content)}</div>
-
-<button class="action-btn" onclick="openDelete('reply','${key}','${cid}','${rid}')">삭제</button>
-
-</div>
-`;
-
+<button class='action-btn' onclick="openPasswordModal('reply','${key}','${cid}','${rid}')">삭제</button>
+</div>`;
 });
-
 }
 
-commentHTML+="</div>";
+commentHTML+='</div>';
 
 });
 
@@ -194,12 +216,11 @@ commentHTML+="</div>";
 
 container.innerHTML=`
 
-<div class="card" style="cursor:default">
+<div class='card' style="cursor:default">
 
-<button class="action-btn" onclick="location.hash=''">목록</button>
+<button class='action-btn' onclick="location.hash=''">목록</button>
 
 <h2>${escapeHTML(post.title)}</h2>
-
 <p>${escapeHTML(post.content)}</p>
 
 <hr>
@@ -210,11 +231,13 @@ ${commentHTML}
 
 <hr>
 
-<input id="c_nick" placeholder="닉네임">
-<input id="c_pass" type="password" placeholder="비밀번호">
-<textarea id="c_content" placeholder="댓글"></textarea>
+<h3>댓글 작성</h3>
 
-<button class="action-btn" onclick="submitComment('${key}')">댓글 작성</button>
+<input id='c_nick' placeholder='닉네임'>
+<input id='c_pass' type='password' placeholder='비밀번호'>
+<textarea id='c_content' placeholder='댓글'></textarea>
+
+<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
 
 </div>
 
@@ -228,12 +251,9 @@ const nick=c_nick.value;
 const pass=c_pass.value;
 const content=c_content.value;
 
-if(!nick||!pass||!content){
-alert("댓글 입력");
-return;
-}
+if(!nick||!pass||!content){alert('댓글 입력');return}
 
-push(ref(db,"posts/"+postKey+"/comments"),{
+push(ref(db,'posts/'+postKey+'/comments'),{
 nickname:nick,
 password:pass,
 content:content,
@@ -244,26 +264,26 @@ c_content.value="";
 
 }
 
-window.toggleReply=function(cid){
+window.toggleReply=function(commentKey){
 
-const box=document.getElementById("replyBox-"+cid);
+const box=document.getElementById("replyBox-"+commentKey);
 
-box.style.display=box.style.display==="none"?"block":"none";
+box.style.display = box.style.display==="none" ? "block" : "none";
 
 }
 
-window.submitReply=function(postKey,cid){
+window.submitReply=function(postKey,commentKey){
 
-const nick=document.getElementById("r_nick-"+cid).value;
-const pass=document.getElementById("r_pass-"+cid).value;
-const content=document.getElementById("r_content-"+cid).value;
+const nick=document.getElementById("r_nick-"+commentKey).value;
+const pass=document.getElementById("r_pass-"+commentKey).value;
+const content=document.getElementById("r_content-"+commentKey).value;
 
 if(!nick||!pass||!content){
 alert("답글 입력");
 return;
 }
 
-push(ref(db,"posts/"+postKey+"/comments/"+cid+"/replies"),{
+push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
 nickname:nick,
 password:pass,
 content:content,
@@ -272,52 +292,50 @@ date:Date.now()
 
 }
 
-window.openDelete=function(type,post,cid,rid){
+window.openPasswordModal=function(type,postKey,commentKey,replyKey){
 
-deleteTarget={type,post,cid,rid};
+deleteTarget={type,postKey,commentKey,replyKey};
 
 document.getElementById("passwordModal").style.display="flex";
 
 }
 
-window.closeModal=function(){
-
+window.closePasswordModal=function(){
 document.getElementById("passwordModal").style.display="none";
-modalPass.value="";
-
+modalPassword.value="";
 }
 
-window.confirmDelete=function(){
+window.confirmPassword=function(){
 
-const pass=modalPass.value;
+const pass=modalPassword.value;
 
 if(deleteTarget.type==="comment"){
 
-const c=allPosts[deleteTarget.post].comments[deleteTarget.cid];
+const comment=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey];
 
-if(pass!==c.password && pass!==MASTER_PASSWORD){
+if(pass!==comment.password && pass!==MASTER_PASSWORD){
 alert("비밀번호 틀림");
 return;
 }
 
-remove(ref(db,"posts/"+deleteTarget.post+"/comments/"+deleteTarget.cid));
+remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey));
 
 }
 
 if(deleteTarget.type==="reply"){
 
-const r=allPosts[deleteTarget.post].comments[deleteTarget.cid].replies[deleteTarget.rid];
+const reply=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey].replies[deleteTarget.replyKey];
 
-if(pass!==r.password && pass!==MASTER_PASSWORD){
+if(pass!==reply.password && pass!==MASTER_PASSWORD){
 alert("비밀번호 틀림");
 return;
 }
 
-remove(ref(db,"posts/"+deleteTarget.post+"/comments/"+deleteTarget.cid+"/replies/"+deleteTarget.rid));
+remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey+'/replies/'+deleteTarget.replyKey));
 
 }
 
-closeModal();
+closePasswordModal();
 
 }
 
@@ -331,7 +349,8 @@ return str
 .replaceAll("'","&#039;");
 }
 
-</script>
+handleRouting();
 
+</script>
 </body>
 </html>
