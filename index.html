@@ -26,14 +26,14 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 .post-image{max-width:100%;margin-top:10px;border-radius:6px;}
 .comment-image{max-width:200px;margin-top:6px;border-radius:6px;}
 
-#passwordModal{
+.modal{
 position:fixed;
 top:0;
 left:0;
 width:100%;
 height:100%;
 background:rgba(0,0,0,0.8);
-display:none;
+display:flex;
 align-items:center;
 justify-content:center;
 z-index:999;
@@ -41,13 +41,9 @@ z-index:999;
 
 .modal-box{
 background:#111611;
+padding:30px;
 border:1px solid #2aff00;
-padding:20px;
 width:300px;
-}
-
-.modal-box input{
-margin-top:10px;
 }
 </style>
 </head>
@@ -75,14 +71,7 @@ margin-top:10px;
 
 <footer>© 2033 Nuclear Community</footer>
 
-<div id="passwordModal">
-<div class="modal-box">
-<h3>비밀번호 입력</h3>
-<input type="password" id="modalPass">
-<button class="action-btn" onclick="confirmPassword()">확인</button>
-<button class="action-btn" onclick="closeModal()">취소</button>
-</div>
-</div>
+<div id="passwordModal" style="display:none"></div>
 
 <script type="module">
 
@@ -107,8 +96,45 @@ const db=getDatabase(app)
 const postsRef=ref(db,'posts')
 
 let allPosts={}
+let currentCategory='all'
 let currentPostKey=null
-let actionData=null
+
+let actionCallback=null
+
+function openPasswordModal(callback){
+
+actionCallback=callback
+
+const modal=document.getElementById("passwordModal")
+
+modal.innerHTML=`
+<div class="modal">
+<div class="modal-box">
+<h3>비밀번호 입력</h3>
+<input type="password" id="modalPass">
+<button class="action-btn" onclick="submitPassword()">확인</button>
+<button class="action-btn" onclick="closeModal()">취소</button>
+</div>
+</div>
+`
+
+modal.style.display="block"
+}
+
+window.submitPassword=function(){
+const pass=document.getElementById("modalPass").value
+closeModal()
+actionCallback(pass)
+}
+
+window.closeModal=function(){
+document.getElementById("passwordModal").style.display="none"
+}
+
+window.filterCategory=function(category){
+currentCategory=category
+renderList()
+}
 
 onValue(postsRef,(snap)=>{
 allPosts=snap.val()||{}
@@ -119,66 +145,128 @@ renderList()
 }
 })
 
-function openModal(data){
-actionData=data
-document.getElementById("passwordModal").style.display="flex"
+function countComments(post){
+let count=0
+if(!post.comments) return 0
+Object.entries(post.comments).forEach(([cid,c])=>{
+count++
+if(c.replies){
+count+=Object.keys(c.replies).length
 }
-
-window.closeModal=function(){
-document.getElementById("passwordModal").style.display="none"
-}
-
-window.confirmPassword=function(){
-
-const input=document.getElementById("modalPass").value
-
-if(input===actionData.password || input===MASTER_DELETE_CODE){
-
-if(actionData.type==="deletePost"){
-remove(ref(db,'posts/'+actionData.key))
-}
-
-if(actionData.type==="deleteComment"){
-remove(ref(db,'posts/'+actionData.postKey+'/comments/'+actionData.commentKey))
-}
-
-if(actionData.type==="deleteReply"){
-remove(ref(db,'posts/'+actionData.postKey+'/comments/'+actionData.commentKey+'/replies/'+actionData.replyKey))
-}
-
-if(actionData.type==="editPost"){
-const newTitle=prompt("새 제목",actionData.post.title)
-const newContent=prompt("새 내용",actionData.post.content)
-
-update(ref(db,'posts/'+actionData.key),{
-title:newTitle,
-content:newContent
 })
+return count
 }
 
-closeModal()
+window.renderList=function(){
 
-}else{
-alert("비밀번호 틀림")
-}
+currentPostKey=null
+const container=document.getElementById('postList')
+container.innerHTML=''
+
+const postsArray=Object.entries(allPosts)
+
+postsArray.sort((a,b)=>(b[1].date||0)-(a[1].date||0))
+
+postsArray.forEach(([key,post])=>{
+
+const commentCount=countComments(post)
+
+const card=document.createElement('div')
+card.className='card'
+card.onclick=()=>renderDetail(key)
+
+card.innerHTML=`
+<div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
+<h3>${post.pinned?'📌 ':''}${escapeHTML(post.title)}</h3>
+<div>${escapeHTML(post.content).slice(0,120)}...</div>
+<div class="time">${formatTime(post.date)}</div>
+<div class="comment-count">댓글 ${commentCount}</div>
+`
+
+container.appendChild(card)
+
+})
 
 }
 
 window.deletePost=function(key,password){
-openModal({type:"deletePost",key,password})
+
+openPasswordModal((input)=>{
+
+if(input===password || input===MASTER_DELETE_CODE){
+remove(ref(db,'posts/'+key))
+}else{
+alert("비밀번호 틀림")
+}
+
+})
+
 }
 
 window.deleteComment=function(postKey,commentKey,password){
-openModal({type:"deleteComment",postKey,commentKey,password})
+
+openPasswordModal((input)=>{
+
+if(input===password || input===MASTER_DELETE_CODE){
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey))
+}else{
+alert("비밀번호 틀림")
+}
+
+})
+
 }
 
 window.deleteReply=function(postKey,commentKey,replyKey,password){
-openModal({type:"deleteReply",postKey,commentKey,replyKey,password})
+
+openPasswordModal((input)=>{
+
+if(input===password || input===MASTER_DELETE_CODE){
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey))
+}else{
+alert("비밀번호 틀림")
+}
+
+})
+
 }
 
 window.editPost=function(key){
+
 const post=allPosts[key]
-openModal({type:"editPost",key,password:post.password,post})
+
+openPasswordModal((pass)=>{
+
+if(pass!==post.password && pass!==MASTER_DELETE_CODE){
+alert("비밀번호 틀림")
+return
+}
+
+const newTitle=prompt("새 제목",post.title)
+const newContent=prompt("새 내용",post.content)
+
+update(ref(db,'posts/'+key),{
+title:newTitle,
+content:newContent
+})
+
+})
+
+}
+
+function formatTime(timestamp){
+const d=new Date(timestamp)
+return `2033.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
+}
+
+function escapeHTML(str){
+if(!str) return ""
+return str
+.replaceAll('&','&amp;')
+.replaceAll('<','&lt;')
+.replaceAll('>','&gt;')
+.replaceAll('"','&quot;')
+.replaceAll("'","&#039;")
 }
 
 </script>
