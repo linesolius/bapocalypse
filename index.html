@@ -231,13 +231,282 @@ if(deleteTarget.type==="deletePost"){
 
 const post=allPosts[deleteTarget.postKey];
 
-if(pass!==post.password && pass!==MASTER_PASSWORD){
-alert("비밀번호 틀림");
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const MASTER_PASSWORD="porygon2007";
+
+const firebaseConfig={
+apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
+authDomain:"community-61897.firebaseapp.com",
+databaseURL:"https://community-61897-default-rtdb.firebaseio.com",
+projectId:"community-61897",
+storageBucket:"community-61897.appspot.com",
+messagingSenderId:"1081865580697",
+appId:"1:1081865580697:web:6ff7e5b838cdbde397c808"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+const postsRef=ref(db,'posts');
+
+let allPosts={};
+let currentCategory='all';
+let deleteTarget=null;
+
+window.addEventListener('hashchange',handleRouting);
+
+function handleRouting(){
+
+const hash=location.hash.replace('#','');
+
+if(hash.startsWith('post-')){
+renderDetail(hash.replace('post-',''));
 return;
 }
 
+renderList();
+
+}
+
+window.filterCategory=function(category){
+currentCategory=category;
+renderList();
+}
+
+onValue(postsRef,(snap)=>{
+allPosts=snap.val()||{};
+handleRouting();
+});
+
+function renderList(){
+
+const container=document.getElementById('postList');
+container.innerHTML='';
+
+const postsArray=Object.entries(allPosts);
+postsArray.sort((a,b)=> (b[1].date||0)-(a[1].date||0));
+
+postsArray.forEach(([key,post])=>{
+
+if(currentCategory!=='all' && post.category!==currentCategory) return;
+
+const card=document.createElement('div');
+card.className='card';
+card.onclick=()=>{location.hash='post-'+key}
+
+card.innerHTML=`
+<div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
+<h3>${escapeHTML(post.title)}</h3>
+<div>${escapeHTML(post.content).slice(0,120)}...</div>
+<div class="time">${formatTime(post.date)}</div>
+`;
+
+container.appendChild(card);
+
+});
+
+}
+
+function renderDetail(key){
+
+const post=allPosts[key];
+const container=document.getElementById('postList');
+
+if(!post){
+container.innerHTML="존재하지 않는 글";
+return;
+}
+
+let commentHTML="";
+
+if(post.comments){
+
+Object.entries(post.comments).forEach(([cid,c])=>{
+
+commentHTML+=`
+<div class='comment'>
+
+<b>${escapeHTML(c.nickname)}</b>
+
+<div>${escapeHTML(c.content)}</div>
+
+<div class="time">${formatTime(c.date)}</div>
+
+<button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
+
+<button class='action-btn' onclick="openPasswordModal('comment','${key}','${cid}')">삭제</button>
+
+<div id="replyBox-${cid}" style="display:none">
+
+<input id="r_nick-${cid}" placeholder="닉네임">
+
+<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
+
+<textarea id="r_content-${cid}" placeholder="답글"></textarea>
+
+<button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
+
+</div>
+`;
+
+if(c.replies){
+
+Object.entries(c.replies).forEach(([rid,r])=>{
+
+commentHTML+=`
+<div class='reply'>
+
+<b>${escapeHTML(r.nickname)}</b>
+
+<div>${escapeHTML(r.content)}</div>
+
+<div class="time">${formatTime(r.date)}</div>
+
+<button class='action-btn' onclick="openPasswordModal('reply','${key}','${cid}','${rid}')">삭제</button>
+
+</div>
+`;
+
+});
+
+}
+
+commentHTML+=`</div>`;
+
+});
+
+}
+
+container.innerHTML=`
+
+<div class='card' style="cursor:default">
+
+<button class='action-btn' onclick="location.hash=''">목록</button>
+
+<button class='action-btn' onclick="openPasswordModal('editPost','${key}')">수정</button>
+
+<button class='action-btn' onclick="openPasswordModal('deletePost','${key}')">삭제</button>
+
+<h2>${escapeHTML(post.title)}</h2>
+
+<p>${escapeHTML(post.content)}</p>
+
+<div class="time">${formatTime(post.date)}</div>
+
+<hr>
+
+<h3>댓글</h3>
+
+${commentHTML}
+
+<hr>
+
+<h3>댓글 작성</h3>
+
+<input id='c_nick' placeholder='닉네임'>
+
+<input id='c_pass' type='password' placeholder='비밀번호'>
+
+<textarea id='c_content' placeholder='댓글'></textarea>
+
+<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
+
+</div>
+
+`;
+
+}
+
+window.submitComment=function(postKey){
+
+const nick=c_nick.value;
+const pass=c_pass.value;
+const content=c_content.value;
+
+if(!nick||!pass||!content){
+alert("댓글 입력");
+return;
+}
+
+push(ref(db,'posts/'+postKey+'/comments'),{
+nickname:nick,
+password:pass,
+content:content,
+date:Date.now()
+});
+
+c_content.value="";
+}
+
+window.toggleReply=function(commentKey){
+
+const box=document.getElementById("replyBox-"+commentKey);
+
+box.style.display = box.style.display==="none" ? "block" : "none";
+
+}
+
+window.submitReply=function(postKey,commentKey){
+
+const nick=document.getElementById("r_nick-"+commentKey).value;
+
+const pass=document.getElementById("r_pass-"+commentKey).value;
+
+const content=document.getElementById("r_content-"+commentKey).value;
+
+if(!nick||!pass||!content){
+alert("답글 입력");
+return;
+}
+
+push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
+nickname:nick,
+password:pass,
+content:content,
+date:Date.now()
+});
+
+}
+
+window.openPasswordModal=function(type,postKey,commentKey,replyKey){
+
+deleteTarget={type,postKey,commentKey,replyKey};
+
+document.getElementById("passwordModal").style.display="flex";
+
+}
+
+window.closePasswordModal=function(){
+
+document.getElementById("passwordModal").style.display="none";
+
+modalPassword.value="";
+
+}
+
+window.confirmPassword=function(){
+
+const pass=modalPassword.value;
+
+if(deleteTarget.type==="deletePost"){
+
+const post=allPosts[deleteTarget.postKey];
+
+if(pass!==post.password && pass!==MASTER_PASSWORD){
+
+alert("비밀번호 틀림");
+
+return;
+
+}
+
 remove(ref(db,'posts/'+deleteTarget.postKey));
+
 location.hash="";
+
 }
 
 if(deleteTarget.type==="editPost"){
@@ -245,19 +514,58 @@ if(deleteTarget.type==="editPost"){
 const post=allPosts[deleteTarget.postKey];
 
 if(pass!==post.password && pass!==MASTER_PASSWORD){
+
 alert("비밀번호 틀림");
+
 return;
+
 }
 
 const newTitle=prompt("새 제목",post.title);
+
 const newContent=prompt("새 내용",post.content);
 
 if(!newTitle||!newContent) return;
 
 update(ref(db,'posts/'+deleteTarget.postKey),{
+
 title:newTitle,
+
 content:newContent
+
 });
+
+}
+
+if(deleteTarget.type==="comment"){
+
+const comment=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey];
+
+if(pass!==comment.password && pass!==MASTER_PASSWORD){
+
+alert("비밀번호 틀림");
+
+return;
+
+}
+
+remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey));
+
+}
+
+if(deleteTarget.type==="reply"){
+
+const reply=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey].replies[deleteTarget.replyKey];
+
+if(pass!==reply.password && pass!==MASTER_PASSWORD){
+
+alert("비밀번호 틀림");
+
+return;
+
+}
+
+remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey+'/replies/'+deleteTarget.replyKey));
 
 }
 
@@ -265,14 +573,40 @@ closePasswordModal();
 
 }
 
+function formatTime(timestamp){
+
+if(!timestamp) return "";
+
+const d=new Date(timestamp);
+
+const month=String(d.getMonth()+1).padStart(2,'0');
+
+const day=String(d.getDate()).padStart(2,'0');
+
+const hour=String(d.getHours()).padStart(2,'0');
+
+const min=String(d.getMinutes()).padStart(2,'0');
+
+return `2033.${month}.${day} ${hour}:${min}`;
+
+}
+
 function escapeHTML(str){
+
 if(!str) return "";
+
 return str
+
 .replaceAll('&','&amp;')
+
 .replaceAll('<','&lt;')
+
 .replaceAll('>','&gt;')
+
 .replaceAll('"','&quot;')
+
 .replaceAll("'","&#039;");
+
 }
 
 handleRouting();
