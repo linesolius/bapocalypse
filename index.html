@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nuclear Community</title>
 
 <style>
@@ -64,7 +64,6 @@ width:300px;
 
 <div class="container" id="postList"></div>
 
-<!-- 비밀번호 팝업 -->
 <div id="passwordModal" class="modal">
 <div class="modal-box">
 
@@ -85,7 +84,7 @@ width:300px;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const MASTER_PASSWORD="porygon2007";
 
@@ -105,7 +104,6 @@ const postsRef=ref(db,'posts');
 
 let allPosts={};
 let currentCategory='all';
-
 let deleteTarget=null;
 
 window.addEventListener('hashchange',handleRouting);
@@ -139,7 +137,6 @@ const container=document.getElementById('postList');
 container.innerHTML='';
 
 const postsArray=Object.entries(allPosts);
-
 postsArray.sort((a,b)=> (b[1].date||0)-(a[1].date||0));
 
 postsArray.forEach(([key,post])=>{
@@ -176,9 +173,7 @@ if(post.comments){
 Object.entries(post.comments).forEach(([cid,c])=>{
 
 commentHTML+=`
-
 <div class='comment'>
-
 <b>${escapeHTML(c.nickname)}</b>
 <div>${escapeHTML(c.content)}</div>
 
@@ -186,15 +181,11 @@ commentHTML+=`
 <button class='action-btn' onclick="openPasswordModal('comment','${key}','${cid}')">삭제</button>
 
 <div id="replyBox-${cid}" style="display:none">
-
 <input id="r_nick-${cid}" placeholder="닉네임">
 <input id="r_pass-${cid}" type="password" placeholder="비밀번호">
 <textarea id="r_content-${cid}" placeholder="답글"></textarea>
-
 <button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
-
 </div>
-
 `;
 
 if(c.replies){
@@ -219,6 +210,8 @@ container.innerHTML=`
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="location.hash=''">목록</button>
+<button class='action-btn' onclick="openPasswordModal('editPost','${key}')">수정</button>
+<button class='action-btn' onclick="openPasswordModal('deletePost','${key}')">삭제</button>
 
 <h2>${escapeHTML(post.title)}</h2>
 <p>${escapeHTML(post.content)}</p>
@@ -265,11 +258,8 @@ c_content.value="";
 }
 
 window.toggleReply=function(commentKey){
-
 const box=document.getElementById("replyBox-"+commentKey);
-
 box.style.display = box.style.display==="none" ? "block" : "none";
-
 }
 
 window.submitReply=function(postKey,commentKey){
@@ -293,11 +283,8 @@ date:Date.now()
 }
 
 window.openPasswordModal=function(type,postKey,commentKey,replyKey){
-
 deleteTarget={type,postKey,commentKey,replyKey};
-
 document.getElementById("passwordModal").style.display="flex";
-
 }
 
 window.closePasswordModal=function(){
@@ -308,6 +295,40 @@ modalPassword.value="";
 window.confirmPassword=function(){
 
 const pass=modalPassword.value;
+
+if(deleteTarget.type==="deletePost"){
+
+const post=allPosts[deleteTarget.postKey];
+
+if(pass!==post.password && pass!==MASTER_PASSWORD){
+alert("비밀번호 틀림");
+return;
+}
+
+remove(ref(db,'posts/'+deleteTarget.postKey));
+location.hash="";
+}
+
+if(deleteTarget.type==="editPost"){
+
+const post=allPosts[deleteTarget.postKey];
+
+if(pass!==post.password && pass!==MASTER_PASSWORD){
+alert("비밀번호 틀림");
+return;
+}
+
+const newTitle=prompt("새 제목",post.title);
+const newContent=prompt("새 내용",post.content);
+
+if(!newTitle||!newContent) return;
+
+update(ref(db,'posts/'+deleteTarget.postKey),{
+title:newTitle,
+content:newContent
+});
+
+}
 
 if(deleteTarget.type==="comment"){
 
