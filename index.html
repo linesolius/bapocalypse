@@ -13,26 +13,17 @@ header{background:#111411;padding:20px 40px;border-bottom:1px solid #2aff00}
 nav{margin-top:10px}
 nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin-right:6px;cursor:pointer}
 nav button:hover{box-shadow:0 0 8px #2aff00}
-
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
-
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
-
 .card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer;transition:.2s}
 .card:hover{box-shadow:0 0 10px #2aff00;transform:translateY(-2px)}
-
 .meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
-
 textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px}
-
 .action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:6px 4px 6px 0;cursor:pointer}
 .action-btn:hover{box-shadow:0 0 10px #2aff00}
-
 .comment{margin-top:15px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,.2)}
 .reply{margin-left:25px;margin-top:10px;padding:10px;background:#0c140c;border:1px solid rgba(0,255,0,.2)}
-
 .uploaded-image{max-width:100%;margin-top:15px;border:1px solid #2aff00}
-
 footer{text-align:center;padding:40px 0;opacity:.6}
 hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 </style>
@@ -60,6 +51,7 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 <footer>© 2033 Nuclear Community</footer>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
@@ -123,10 +115,13 @@ container.innerHTML='';
 const postsArray=Object.entries(allPosts);
 
 postsArray.sort((a,b)=>{
+
 if((b[1].notice||false)!==(a[1].notice||false)){
 return (b[1].notice?1:0)-(a[1].notice?1:0);
 }
+
 return (b[1].date||0)-(a[1].date||0);
+
 });
 
 postsArray.forEach(([key,post])=>{
@@ -206,7 +201,7 @@ container.innerHTML=`
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="location.hash=''">목록</button>
-<button class='action-btn' onclick="editPost('"+'${key}'+"')">수정</button>
+<button class='action-btn' onclick="editPost('${key}')">수정</button>
 
 <div class='meta'>${post.category} | ${post.nickname}</div>
 
@@ -261,15 +256,18 @@ imageURLs.push(url);
 }
 
 for(let file of w_files.files){
+
 const storageRef=sRef(storage,'files/'+Date.now()+file.name);
 await uploadBytes(storageRef,file);
 const url=await getDownloadURL(storageRef);
+
 fileData.push({name:file.name,url});
+
 }
 
 await push(postsRef,{
 title,nickname,password,content,category,
-notice:false,
+notice:w_notice.checked,
 date:Date.now(),
 images:imageURLs,
 files:fileData
@@ -329,7 +327,11 @@ if(!nick||!pass||!content){alert('댓글 입력');return}
 
 const commentRef=ref(db,'posts/'+postKey+'/comments');
 
-push(commentRef,{nickname:nick,password:pass,content});
+push(commentRef,{nickname:nick,password:pass,content,date:Date.now()});
+
+c_content.value="";
+
+location.hash='post-'+postKey;
 
 }
 
@@ -344,6 +346,8 @@ if(!text||!nick||!pass)return;
 const replyRef=ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies');
 
 push(replyRef,{nickname:nick,password:pass,content:text});
+
+location.hash='post-'+postKey;
 
 }
 
@@ -369,7 +373,7 @@ title:newTitle,
 content:newContent
 });
 
-};
+}
 
 window.deleteComment=function(postKey,commentKey){
 
