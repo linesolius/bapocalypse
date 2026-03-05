@@ -32,6 +32,7 @@ background:rgba(0,0,0,.8);
 display:none;
 align-items:center;
 justify-content:center;
+z-index:9999;
 }
 
 .modal-box{
@@ -173,47 +174,6 @@ const container=document.getElementById('postList');
 
 if(!post){container.innerHTML='존재하지 않는 글';return}
 
-let commentHTML='';
-
-if(post.comments){
-
-Object.entries(post.comments).forEach(([cid,c])=>{
-
-commentHTML+=`
-<div class='comment'>
-<b>${escapeHTML(c.nickname)}</b>
-<div>${escapeHTML(c.content)}</div>
-<div class="time">${formatTime(c.date)}</div>
-
-<button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
-<button class='action-btn' onclick="openPasswordModal('comment','${key}','${cid}')">삭제</button>
-
-<div id="replyBox-${cid}" style="display:none">
-<input id="r_nick-${cid}" placeholder="닉네임">
-<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
-<textarea id="r_content-${cid}" placeholder="답글"></textarea>
-<button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
-</div>
-`;
-
-if(c.replies){
-Object.entries(c.replies).forEach(([rid,r])=>{
-commentHTML+=`
-<div class='reply'>
-<b>${escapeHTML(r.nickname)}</b>
-<div>${escapeHTML(r.content)}</div>
-<div class="time">${formatTime(r.date)}</div>
-<button class='action-btn' onclick="openPasswordModal('reply','${key}','${cid}','${rid}')">삭제</button>
-</div>`;
-});
-}
-
-commentHTML+='</div>';
-
-});
-
-}
-
 container.innerHTML=`
 
 <div class='card' style="cursor:default">
@@ -226,69 +186,9 @@ container.innerHTML=`
 <p>${escapeHTML(post.content)}</p>
 <div class="time">${formatTime(post.date)}</div>
 
-<hr>
-
-<h3>댓글</h3>
-
-${commentHTML}
-
-<hr>
-
-<h3>댓글 작성</h3>
-
-<input id='c_nick' placeholder='닉네임'>
-<input id='c_pass' type='password' placeholder='비밀번호'>
-<textarea id='c_content' placeholder='댓글'></textarea>
-
-<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
-
 </div>
 
 `;
-
-}
-
-window.submitComment=function(postKey){
-
-const nick=c_nick.value;
-const pass=c_pass.value;
-const content=c_content.value;
-
-if(!nick||!pass||!content){alert('댓글 입력');return}
-
-push(ref(db,'posts/'+postKey+'/comments'),{
-nickname:nick,
-password:pass,
-content:content,
-date:Date.now()
-});
-
-c_content.value="";
-
-}
-
-window.toggleReply=function(commentKey){
-const box=document.getElementById("replyBox-"+commentKey);
-box.style.display = box.style.display==="none" ? "block" : "none";
-}
-
-window.submitReply=function(postKey,commentKey){
-
-const nick=document.getElementById("r_nick-"+commentKey).value;
-const pass=document.getElementById("r_pass-"+commentKey).value;
-const content=document.getElementById("r_content-"+commentKey).value;
-
-if(!nick||!pass||!content){
-alert("답글 입력");
-return;
-}
-
-push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
-nickname:nick,
-password:pass,
-content:content,
-date:Date.now()
-});
 
 }
 
@@ -308,18 +208,24 @@ return `2033.${month}.${day} ${hour}:${min}`;
 }
 
 window.openPasswordModal=function(type,postKey,commentKey,replyKey){
+
 deleteTarget={type,postKey,commentKey,replyKey};
+
 document.getElementById("passwordModal").style.display="flex";
+
 }
 
 window.closePasswordModal=function(){
+
 document.getElementById("passwordModal").style.display="none";
-modalPassword.value="";
+
+document.getElementById("modalPassword").value="";
+
 }
 
 window.confirmPassword=function(){
 
-const pass=modalPassword.value;
+const pass=document.getElementById("modalPassword").value;
 
 if(deleteTarget.type==="deletePost"){
 
@@ -352,32 +258,6 @@ update(ref(db,'posts/'+deleteTarget.postKey),{
 title:newTitle,
 content:newContent
 });
-
-}
-
-if(deleteTarget.type==="comment"){
-
-const comment=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey];
-
-if(pass!==comment.password && pass!==MASTER_PASSWORD){
-alert("비밀번호 틀림");
-return;
-}
-
-remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey));
-
-}
-
-if(deleteTarget.type==="reply"){
-
-const reply=allPosts[deleteTarget.postKey].comments[deleteTarget.commentKey].replies[deleteTarget.replyKey];
-
-if(pass!==reply.password && pass!==MASTER_PASSWORD){
-alert("비밀번호 틀림");
-return;
-}
-
-remove(ref(db,'posts/'+deleteTarget.postKey+'/comments/'+deleteTarget.commentKey+'/replies/'+deleteTarget.replyKey));
 
 }
 
