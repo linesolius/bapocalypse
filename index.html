@@ -16,7 +16,6 @@ nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
 .card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer}
 .meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
-.notice{border:1px solid #2aff00;background:#0f1a0f}
 textarea,input{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px}
 .action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:6px 4px 6px 0;cursor:pointer}
 .comment{margin-top:15px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,.2)}
@@ -53,7 +52,7 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
@@ -72,16 +71,24 @@ const postsRef=ref(db,'posts');
 let allPosts={}
 let currentCategory='all'
 
+window.addEventListener('hashchange',handleRouting)
+
 function formatDate(time){
-
 const d=new Date(time)
-
 const m=String(d.getMonth()+1).padStart(2,'0')
 const day=String(d.getDate()).padStart(2,'0')
 const h=String(d.getHours()).padStart(2,'0')
 const min=String(d.getMinutes()).padStart(2,'0')
-
 return `2033-${m}-${day} ${h}:${min}`
+}
+
+function handleRouting(){
+const hash=location.hash.replace('#','')
+if(hash.startsWith('post-')){
+renderDetail(hash.replace('post-',''))
+return
+}
+renderList()
 }
 
 window.filterCategory=function(category){
@@ -91,7 +98,7 @@ renderList()
 
 onValue(postsRef,(snap)=>{
 allPosts=snap.val()||{}
-renderList()
+handleRouting()
 })
 
 function renderList(){
@@ -105,27 +112,22 @@ const noticePosts=[]
 const normalPosts=[]
 
 postsArray.forEach(([key,post])=>{
-
 if(post.category==="공지"){
 noticePosts.push([key,post])
 }else{
 normalPosts.push([key,post])
 }
-
 })
 
 noticePosts.sort((a,b)=> (b[1].date||0)-(a[1].date||0))
 normalPosts.sort((a,b)=> (b[1].date||0)-(a[1].date||0))
 
-function drawPost(key,post,isNotice=false){
+function drawPost(key,post){
 
 if(currentCategory!=='all' && post.category!==currentCategory && post.category!=='공지') return
 
 const card=document.createElement('div')
 card.className='card'
-
-if(isNotice) card.classList.add("notice")
-
 card.onclick=()=>{location.hash='post-'+key}
 
 card.innerHTML=`
@@ -141,12 +143,41 @@ container.appendChild(card)
 }
 
 noticePosts.forEach(([key,post])=>{
-drawPost(key,post,true)
+drawPost(key,post)
 })
 
 normalPosts.forEach(([key,post])=>{
-drawPost(key,post,false)
+drawPost(key,post)
 })
+
+}
+
+function renderDetail(key){
+
+const post=allPosts[key]
+const container=document.getElementById('postList')
+
+if(!post){
+container.innerHTML='존재하지 않는 글'
+return
+}
+
+container.innerHTML=`
+
+<div class='card' style="cursor:default">
+
+<button class='action-btn' onclick="location.hash=''">목록</button>
+
+<div class='meta'>
+작성자 ${escapeHTML(post.nickname)} | ${formatDate(post.date)}
+</div>
+
+<h2>${escapeHTML(post.title)}</h2>
+<p>${escapeHTML(post.content)}</p>
+
+</div>
+
+`
 
 }
 
@@ -159,6 +190,8 @@ return str
 .replaceAll('"','&quot;')
 .replaceAll("'","&#039;")
 }
+
+handleRouting()
 
 </script>
 </body>
