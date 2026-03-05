@@ -35,7 +35,11 @@ padding:8px 14px;
 cursor:pointer
 }
 
-.container{max-width:1000px;margin:40px auto;padding:0 20px}
+.container{
+max-width:1000px;
+margin:40px auto;
+padding:0 20px
+}
 
 .card{
 background:#111611;
@@ -45,7 +49,11 @@ border:1px solid rgba(0,255,0,0.2);
 cursor:pointer
 }
 
-.meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
+.meta{
+font-size:12px;
+color:#5eff2a;
+margin-bottom:10px
+}
 
 textarea,input,select{
 width:100%;
@@ -78,12 +86,6 @@ margin-top:10px;
 padding:10px;
 background:#0c140c;
 border:1px solid rgba(0,255,0,.2)
-}
-
-hr{
-margin:20px 0;
-border:0;
-border-top:1px solid rgba(0,255,0,.3)
 }
 
 .modal{
@@ -140,7 +142,6 @@ margin-top:5px;
 <div class="modal-box">
 
 <h3>비밀번호 입력</h3>
-
 <input type="password" id="modalPassword">
 
 <br><br>
@@ -161,7 +162,7 @@ import { getDatabase, ref, push, onValue, remove, update } from "https://www.gst
 const MASTER_PASSWORD="porygon2007";
 
 const firebaseConfig={
-apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
+apiKey:"AIzaSy...",
 authDomain:"community-61897.firebaseapp.com",
 databaseURL:"https://community-61897-default-rtdb.firebaseio.com",
 projectId:"community-61897",
@@ -254,23 +255,12 @@ container.innerHTML=`
 
 window.submitPost=function(){
 
-const category=w_category.value;
-const nickname=w_nick.value;
-const password=w_pass.value;
-const title=w_title.value;
-const content=w_content.value;
-
-if(!nickname||!password||!title||!content){
-alert("입력하세요");
-return;
-}
-
 push(postsRef,{
-category,
-nickname,
-password,
-title,
-content,
+category:w_category.value,
+nickname:w_nick.value,
+password:w_pass.value,
+title:w_title.value,
+content:w_content.value,
 date:Date.now()
 });
 
@@ -288,12 +278,21 @@ container.innerHTML=`
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="renderList()">목록</button>
-<button class='action-btn' onclick="openPasswordModal('editPost','${key}')">수정</button>
-<button class='action-btn' onclick="openPasswordModal('deletePost','${key}')">삭제</button>
 
 <h2>${escapeHTML(post.title)}</h2>
 <p>${escapeHTML(post.content)}</p>
+
 <div class="time">${formatTime(post.date)}</div>
+
+<hr>
+
+<h3>댓글</h3>
+
+<input id='c_nick' placeholder='닉네임'>
+<input id='c_pass' type='password' placeholder='비밀번호'>
+<textarea id='c_content' placeholder='댓글'></textarea>
+
+<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
 
 </div>
 
@@ -301,52 +300,20 @@ container.innerHTML=`
 
 }
 
-window.openPasswordModal=function(type,postKey){
-deleteTarget={type,postKey};
-document.getElementById("passwordModal").style.display="flex";
-}
+window.submitComment=function(postKey){
 
-window.closePasswordModal=function(){
-document.getElementById("passwordModal").style.display="none";
-}
-
-window.confirmPassword=function(){
-
-const pass=document.getElementById("modalPassword").value;
-
-const post=allPosts[deleteTarget.postKey];
-
-if(pass!==post.password && pass!==MASTER_PASSWORD){
-alert("비밀번호 틀림");
-return;
-}
-
-if(deleteTarget.type==="deletePost"){
-remove(ref(db,'posts/'+deleteTarget.postKey));
-}
-
-if(deleteTarget.type==="editPost"){
-
-const newTitle=prompt("새 제목",post.title);
-const newContent=prompt("새 내용",post.content);
-
-update(ref(db,'posts/'+deleteTarget.postKey),{
-title:newTitle,
-content:newContent
+push(ref(db,'posts/'+postKey+'/comments'),{
+nickname:c_nick.value,
+password:c_pass.value,
+content:c_content.value,
+date:Date.now()
 });
 
 }
 
-closePasswordModal();
-
-}
-
 function formatTime(timestamp){
-
 const d=new Date(timestamp);
-
 return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${d.getMinutes()}`;
-
 }
 
 function escapeHTML(str){
@@ -354,12 +321,9 @@ if(!str) return "";
 return str
 .replaceAll('&','&amp;')
 .replaceAll('<','&lt;')
-.replaceAll('>','&gt;')
-.replaceAll('"','&quot;')
-.replaceAll("'","&#039;");
+.replaceAll('>','&gt;');
 }
 
 </script>
-
 </body>
 </html>
