@@ -47,12 +47,24 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 
 <div class="container" id="postList"></div>
 
+<div id="passwordModal" class="modal">
+<div class="modal-box">
+<h3>비밀번호 입력</h3>
+<input type="password" id="modalPassword">
+<br><br>
+<button class="action-btn" onclick="confirmPassword()">확인</button>
+<button class="action-btn" onclick="closePasswordModal()">취소</button>
+</div>
+</div>
+
 <footer>© 2033 Nuclear Community</footer>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const MASTER_PASSWORD="porygon2007";
 
 const firebaseConfig={
 apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
@@ -68,66 +80,62 @@ const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 const postsRef=ref(db,'posts');
 
-let allPosts={}
-let currentCategory='all'
+let allPosts={};
+let currentCategory='all';
+let deleteTarget=null;
 
-window.addEventListener('hashchange',handleRouting)
+window.addEventListener('hashchange',handleRouting);
 
 function formatDate(time){
-const d=new Date(time)
-const m=String(d.getMonth()+1).padStart(2,'0')
-const day=String(d.getDate()).padStart(2,'0')
-const h=String(d.getHours()).padStart(2,'0')
-const min=String(d.getMinutes()).padStart(2,'0')
-return `2033-${m}-${day} ${h}:${min}`
+
+const d=new Date(time);
+
+const m=String(d.getMonth()+1).padStart(2,'0');
+const day=String(d.getDate()).padStart(2,'0');
+const h=String(d.getHours()).padStart(2,'0');
+const min=String(d.getMinutes()).padStart(2,'0');
+
+return `2033-${m}-${day} ${h}:${min}`;
+
 }
 
 function handleRouting(){
-const hash=location.hash.replace('#','')
+
+const hash=location.hash.replace('#','');
+
 if(hash.startsWith('post-')){
-renderDetail(hash.replace('post-',''))
-return
+renderDetail(hash.replace('post-',''));
+return;
 }
-renderList()
+
+renderList();
+
 }
 
 window.filterCategory=function(category){
-currentCategory=category
-renderList()
+currentCategory=category;
+renderList();
 }
 
 onValue(postsRef,(snap)=>{
-allPosts=snap.val()||{}
-handleRouting()
-})
+allPosts=snap.val()||{};
+handleRouting();
+});
 
 function renderList(){
 
-const container=document.getElementById('postList')
-container.innerHTML=''
+const container=document.getElementById('postList');
+container.innerHTML='';
 
-const postsArray=Object.entries(allPosts)
-
-const noticePosts=[]
-const normalPosts=[]
+const postsArray=Object.entries(allPosts);
+postsArray.sort((a,b)=> (b[1].date||0)-(a[1].date||0));
 
 postsArray.forEach(([key,post])=>{
-if(post.category==="공지"){
-noticePosts.push([key,post])
-}else{
-normalPosts.push([key,post])
-}
-})
 
-noticePosts.sort((a,b)=> (b[1].date||0)-(a[1].date||0))
-normalPosts.sort((a,b)=> (b[1].date||0)-(a[1].date||0))
+if(currentCategory!=='all' && post.category!==currentCategory) return;
 
-function drawPost(key,post){
-
-if(currentCategory!=='all' && post.category!==currentCategory && post.category!=='공지') return
-
-const card=document.createElement('div')
-card.className='card'
+const card=document.createElement('div');
+card.className='card';
 card.onclick=()=>{location.hash='post-'+key}
 
 card.innerHTML=`
@@ -136,30 +144,64 @@ card.innerHTML=`
 </div>
 <h3>${escapeHTML(post.title)}</h3>
 <div>${escapeHTML(post.content).slice(0,120)}...</div>
-`
+`;
 
-container.appendChild(card)
+container.appendChild(card);
 
-}
-
-noticePosts.forEach(([key,post])=>{
-drawPost(key,post)
-})
-
-normalPosts.forEach(([key,post])=>{
-drawPost(key,post)
-})
+});
 
 }
 
 function renderDetail(key){
 
-const post=allPosts[key]
-const container=document.getElementById('postList')
+const post=allPosts[key];
+const container=document.getElementById('postList');
 
-if(!post){
-container.innerHTML='존재하지 않는 글'
-return
+if(!post){container.innerHTML='존재하지 않는 글';return}
+
+let commentHTML='';
+
+if(post.comments){
+
+Object.entries(post.comments).forEach(([cid,c])=>{
+
+commentHTML+=`
+<div class='comment'>
+<b>${escapeHTML(c.nickname)}</b>
+<span style="font-size:11px;color:#5eff2a">
+${formatDate(c.date)}
+</span>
+<div>${escapeHTML(c.content)}</div>
+
+<button class='action-btn' onclick="toggleReply('${cid}')">답글</button>
+<button class='action-btn' onclick="openPasswordModal('comment','${key}','${cid}')">삭제</button>
+
+<div id="replyBox-${cid}" style="display:none">
+<input id="r_nick-${cid}" placeholder="닉네임">
+<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
+<textarea id="r_content-${cid}" placeholder="답글"></textarea>
+<button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
+</div>
+`;
+
+if(c.replies){
+Object.entries(c.replies).forEach(([rid,r])=>{
+commentHTML+=`
+<div class='reply'>
+<b>${escapeHTML(r.nickname)}</b>
+<span style="font-size:11px;color:#5eff2a">
+${formatDate(r.date)}
+</span>
+<div>${escapeHTML(r.content)}</div>
+<button class='action-btn' onclick="openPasswordModal('reply','${key}','${cid}','${rid}')">삭제</button>
+</div>`;
+});
+}
+
+commentHTML+='</div>';
+
+});
+
 }
 
 container.innerHTML=`
@@ -167,6 +209,8 @@ container.innerHTML=`
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="location.hash=''">목록</button>
+<button class='action-btn' onclick="openPasswordModal('editPost','${key}')">수정</button>
+<button class='action-btn' onclick="openPasswordModal('deletePost','${key}')">삭제</button>
 
 <div class='meta'>
 작성자 ${escapeHTML(post.nickname)} | ${formatDate(post.date)}
@@ -175,23 +219,83 @@ container.innerHTML=`
 <h2>${escapeHTML(post.title)}</h2>
 <p>${escapeHTML(post.content)}</p>
 
+<hr>
+
+<h3>댓글</h3>
+
+${commentHTML}
+
+<hr>
+
+<h3>댓글 작성</h3>
+
+<input id='c_nick' placeholder='닉네임'>
+<input id='c_pass' type='password' placeholder='비밀번호'>
+<textarea id='c_content' placeholder='댓글'></textarea>
+
+<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
+
 </div>
 
-`
+`;
+
+}
+
+window.submitComment=function(postKey){
+
+const nick=c_nick.value;
+const pass=c_pass.value;
+const content=c_content.value;
+
+if(!nick||!pass||!content){alert('댓글 입력');return}
+
+push(ref(db,'posts/'+postKey+'/comments'),{
+nickname:nick,
+password:pass,
+content:content,
+date:Date.now()
+});
+
+c_content.value="";
+
+}
+
+window.toggleReply=function(commentKey){
+const box=document.getElementById("replyBox-"+commentKey);
+box.style.display = box.style.display==="none" ? "block" : "none";
+}
+
+window.submitReply=function(postKey,commentKey){
+
+const nick=document.getElementById("r_nick-"+commentKey).value;
+const pass=document.getElementById("r_pass-"+commentKey).value;
+const content=document.getElementById("r_content-"+commentKey).value;
+
+if(!nick||!pass||!content){
+alert("답글 입력");
+return;
+}
+
+push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
+nickname:nick,
+password:pass,
+content:content,
+date:Date.now()
+});
 
 }
 
 function escapeHTML(str){
-if(!str) return ""
+if(!str) return "";
 return str
 .replaceAll('&','&amp;')
 .replaceAll('<','&lt;')
 .replaceAll('>','&gt;')
 .replaceAll('"','&quot;')
-.replaceAll("'","&#039;")
+.replaceAll("'","&#039;");
 }
 
-handleRouting()
+handleRouting();
 
 </script>
 </body>
