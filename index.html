@@ -23,7 +23,6 @@ textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px s
 .action-btn:hover{box-shadow:0 0 10px #2aff00}
 .comment{margin-top:15px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,.2)}
 .reply{margin-left:25px;margin-top:10px;padding:10px;background:#0c140c;border:1px solid rgba(0,255,0,.2)}
-.uploaded-image{max-width:100%;margin-top:15px;border:1px solid #2aff00}
 footer{text-align:center;padding:40px 0;opacity:.6}
 hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 </style>
@@ -54,7 +53,6 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const MASTER_PASSWORD="porygon2007";
 
@@ -70,8 +68,6 @@ appId:"1:1081865580697:web:6ff7e5b838cdbde397c808"
 
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
-const storage=getStorage(app);
-
 const postsRef=ref(db,'posts');
 
 let allPosts={};
@@ -82,11 +78,6 @@ window.addEventListener('hashchange',handleRouting);
 function handleRouting(){
 
 const hash=location.hash.replace('#','');
-
-if(hash==='write'){
-renderWritePage();
-return;
-}
 
 if(hash.startsWith('post-')){
 renderDetail(hash.replace('post-',''));
@@ -114,15 +105,7 @@ container.innerHTML='';
 
 const postsArray=Object.entries(allPosts);
 
-postsArray.sort((a,b)=>{
-
-if((b[1].notice||false)!==(a[1].notice||false)){
-return (b[1].notice?1:0)-(a[1].notice?1:0);
-}
-
-return (b[1].date||0)-(a[1].date||0);
-
-});
+postsArray.sort((a,b)=> (b[1].date||0)-(a[1].date||0));
 
 postsArray.forEach(([key,post])=>{
 
@@ -130,11 +113,10 @@ if(currentCategory!=='all' && post.category!==currentCategory) return;
 
 const card=document.createElement('div');
 card.className='card';
-
 card.onclick=()=>{location.hash='post-'+key}
 
 card.innerHTML=`
-<div class='meta'>${post.notice?'📌':''}[${post.category}] ${escapeHTML(post.nickname)}</div>
+<div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
 <h3>${escapeHTML(post.title)}</h3>
 <div>${escapeHTML(post.content).slice(0,120)}...</div>
 `;
@@ -159,6 +141,7 @@ if(post.comments){
 Object.entries(post.comments).forEach(([cid,c])=>{
 
 commentHTML+=`
+
 <div class='comment'>
 
 <b>${escapeHTML(c.nickname)}</b>
@@ -176,6 +159,7 @@ commentHTML+=`
 <button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
 
 </div>
+
 `;
 
 if(c.replies){
@@ -196,17 +180,23 @@ commentHTML+='</div>';
 }
 
 container.innerHTML=`
+
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="location.hash=''">목록</button>
 
 <h2>${escapeHTML(post.title)}</h2>
-
 <p>${escapeHTML(post.content)}</p>
 
 <hr>
 
 <h3>댓글</h3>
+
+${commentHTML}
+
+<hr>
+
+<h3>댓글 작성</h3>
 
 <input id='c_nick' placeholder='닉네임'>
 <input id='c_pass' type='password' placeholder='비밀번호'>
@@ -214,9 +204,9 @@ container.innerHTML=`
 
 <button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
 
-${commentHTML}
+</div>
 
-</div>`;
+`;
 
 }
 
