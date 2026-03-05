@@ -25,6 +25,30 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 .comment-count{font-size:12px;color:#7dff4f;margin-top:6px;}
 .post-image{max-width:100%;margin-top:10px;border-radius:6px;}
 .comment-image{max-width:200px;margin-top:6px;border-radius:6px;}
+
+#passwordModal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.8);
+display:none;
+align-items:center;
+justify-content:center;
+z-index:999;
+}
+
+.modal-box{
+background:#111611;
+border:1px solid #2aff00;
+padding:20px;
+width:300px;
+}
+
+.modal-box input{
+margin-top:10px;
+}
 </style>
 </head>
 
@@ -51,6 +75,15 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 
 <footer>© 2033 Nuclear Community</footer>
 
+<div id="passwordModal">
+<div class="modal-box">
+<h3>비밀번호 입력</h3>
+<input type="password" id="modalPass">
+<button class="action-btn" onclick="confirmPassword()">확인</button>
+<button class="action-btn" onclick="closeModal()">취소</button>
+</div>
+</div>
+
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -74,13 +107,8 @@ const db=getDatabase(app)
 const postsRef=ref(db,'posts')
 
 let allPosts={}
-let currentCategory='all'
 let currentPostKey=null
-
-window.filterCategory=function(category){
-currentCategory=category
-renderList()
-}
+let actionData=null
 
 onValue(postsRef,(snap)=>{
 allPosts=snap.val()||{}
@@ -91,304 +119,66 @@ renderList()
 }
 })
 
-function countComments(post){
-let count=0
-if(!post.comments) return 0
-Object.entries(post.comments).forEach(([cid,c])=>{
-count++
-if(c.replies){
-count+=Object.keys(c.replies).length
-}
-})
-return count
+function openModal(data){
+actionData=data
+document.getElementById("passwordModal").style.display="flex"
 }
 
-window.renderList=function(){
-
-currentPostKey=null
-const container=document.getElementById('postList')
-container.innerHTML=''
-
-const postsArray=Object.entries(allPosts)
-
-const pinnedNotice=postsArray.filter(([k,p])=>p.category==="공지" && p.pinned)
-
-const normalPosts=postsArray.filter(([k,p])=>{
-if(currentCategory==="all") return !(p.category==="공지" && p.pinned)
-return p.category===currentCategory && !(p.category==="공지" && p.pinned)
-})
-
-pinnedNotice.sort((a,b)=>(b[1].date||0)-(a[1].date||0))
-normalPosts.sort((a,b)=>(b[1].date||0)-(a[1].date||0))
-
-const finalList=[...pinnedNotice,...normalPosts]
-
-finalList.forEach(([key,post])=>{
-
-const commentCount=countComments(post)
-
-const card=document.createElement('div')
-card.className='card'
-card.onclick=()=>renderDetail(key)
-
-card.innerHTML=`
-<div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
-<h3>${post.pinned?'📌 ':''}${escapeHTML(post.title)}</h3>
-<div>${escapeHTML(post.content).slice(0,120)}...</div>
-<div class="time">${formatTime(post.date)}</div>
-<div class="comment-count">댓글 ${commentCount}</div>
-`
-
-container.appendChild(card)
-
-})
-
+window.closeModal=function(){
+document.getElementById("passwordModal").style.display="none"
 }
 
-window.renderWrite=function(){
+window.confirmPassword=function(){
 
-const container=document.getElementById('postList')
+const input=document.getElementById("modalPass").value
 
-container.innerHTML=`
+if(input===actionData.password || input===MASTER_DELETE_CODE){
 
-<div class="card" style="cursor:default">
-
-<h2>글 작성</h2>
-
-<select id="w_category">
-<option>공지</option>
-<option>잡담</option>
-<option>정보</option>
-<option>질문</option>
-<option>거래</option>
-<option>도움</option>
-</select>
-
-<label style="display:block;margin-top:10px">
-<input type="checkbox" id="w_pin"> 공지 상단 고정
-</label>
-
-<input id="admin_code" placeholder="관리자 코드 (공지 작성 시 필요)">
-<input id="w_nick" placeholder="닉네임">
-<input id="w_pass" type="password" placeholder="비밀번호">
-<input id="w_title" placeholder="제목">
-<textarea id="w_content" placeholder="내용"></textarea>
-
-<input id="w_image" placeholder="이미지 링크 (선택)">
-
-<button class="action-btn" onclick="submitPost()">게시하기</button>
-<button class="action-btn" onclick="renderList()">취소</button>
-
-</div>
-`
+if(actionData.type==="deletePost"){
+remove(ref(db,'posts/'+actionData.key))
 }
 
-window.submitPost=function(){
-
-const category=w_category.value
-
-if(category==="공지"){
-if(admin_code.value!==ADMIN_CODE){
-alert("공지 작성은 관리자만 가능합니다")
-return
-}
+if(actionData.type==="deleteComment"){
+remove(ref(db,'posts/'+actionData.postKey+'/comments/'+actionData.commentKey))
 }
 
-push(postsRef,{
-category:category,
-nickname:w_nick.value,
-password:w_pass.value,
-title:w_title.value,
-content:w_content.value,
-image:w_image.value || "",
-pinned:w_pin.checked,
-date:Date.now()
-})
-
-renderList()
+if(actionData.type==="deleteReply"){
+remove(ref(db,'posts/'+actionData.postKey+'/comments/'+actionData.commentKey+'/replies/'+actionData.replyKey))
 }
 
-function renderDetail(key){
+if(actionData.type==="editPost"){
+const newTitle=prompt("새 제목",actionData.post.title)
+const newContent=prompt("새 내용",actionData.post.content)
 
-currentPostKey=key
-const post=allPosts[key]
-const container=document.getElementById('postList')
-
-let commentHTML=""
-
-if(post.comments){
-
-Object.entries(post.comments).forEach(([cid,c])=>{
-
-commentHTML+=`
-<div class='comment'>
-<b>${escapeHTML(c.nickname)}</b>
-<div>${escapeHTML(c.content)}</div>
-${c.image?`<img src="${c.image}" class="comment-image">`:""}
-<div class="time">${formatTime(c.date)}</div>
-
-<button class="action-btn" onclick="deleteComment('${key}','${cid}','${c.password}')">삭제</button>
-<button class="action-btn" onclick="toggleReply('${cid}')">답글</button>
-
-<div id="replyBox-${cid}" style="display:none">
-<input id="r_nick-${cid}" placeholder="닉네임">
-<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
-<textarea id="r_content-${cid}" placeholder="답글"></textarea>
-<button class="action-btn" onclick="submitReply('${key}','${cid}')">답글 작성</button>
-</div>
-`
-
-if(c.replies){
-Object.entries(c.replies).forEach(([rid,r])=>{
-commentHTML+=`
-<div class='reply'>
-<b>${escapeHTML(r.nickname)}</b>
-<div>${escapeHTML(r.content)}</div>
-<div class="time">${formatTime(r.date)}</div>
-<button class="action-btn" onclick="deleteReply('${key}','${cid}','${rid}','${r.password}')">삭제</button>
-</div>
-`
+update(ref(db,'posts/'+actionData.key),{
+title:newTitle,
+content:newContent
 })
 }
 
-commentHTML+='</div>'
+closeModal()
 
-})
-
+}else{
+alert("비밀번호 틀림")
 }
-
-container.innerHTML=`
-
-<div class='card' style="cursor:default">
-
-<button class='action-btn' onclick="renderList()">목록</button>
-<button class='action-btn' onclick="editPost('${key}')">수정</button>
-<button class='action-btn' onclick="deletePost('${key}','${post.password}')">삭제</button>
-
-<h2>${escapeHTML(post.title)}</h2>
-<p>${escapeHTML(post.content)}</p>
-
-${post.image?`<img src="${post.image}" class="post-image">`:""}
-
-<div class="time">${formatTime(post.date)}</div>
-
-<hr>
-
-<h3>댓글</h3>
-${commentHTML}
-
-<hr>
-
-<h3>댓글 작성</h3>
-
-<input id='c_nick' placeholder='닉네임'>
-<input id='c_pass' type='password' placeholder='비밀번호'>
-<textarea id='c_content' placeholder='댓글'></textarea>
-<input id='c_image' placeholder='이미지 링크 (선택)'>
-
-<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
-
-</div>
-`
-}
-
-window.submitComment=function(postKey){
-
-push(ref(db,'posts/'+postKey+'/comments'),{
-nickname:c_nick.value,
-password:c_pass.value,
-content:c_content.value,
-image:c_image.value || "",
-date:Date.now()
-})
-
-}
-
-window.submitReply=function(postKey,commentKey){
-
-push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
-nickname:document.getElementById("r_nick-"+commentKey).value,
-password:document.getElementById("r_pass-"+commentKey).value,
-content:document.getElementById("r_content-"+commentKey).value,
-date:Date.now()
-})
 
 }
 
 window.deletePost=function(key,password){
-
-const input=prompt("비밀번호 또는 관리자 코드 입력")
-
-if(input===password || input===MASTER_DELETE_CODE){
-remove(ref(db,'posts/'+key))
-}else{
-alert("비밀번호 틀림")
-}
-
+openModal({type:"deletePost",key,password})
 }
 
 window.deleteComment=function(postKey,commentKey,password){
-
-const input=prompt("비밀번호 또는 관리자 코드 입력")
-
-if(input===password || input===MASTER_DELETE_CODE){
-remove(ref(db,'posts/'+postKey+'/comments/'+commentKey))
-}else{
-alert("비밀번호 틀림")
-}
-
+openModal({type:"deleteComment",postKey,commentKey,password})
 }
 
 window.deleteReply=function(postKey,commentKey,replyKey,password){
-
-const input=prompt("비밀번호 또는 관리자 코드 입력")
-
-if(input===password || input===MASTER_DELETE_CODE){
-remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey))
-}else{
-alert("비밀번호 틀림")
-}
-
+openModal({type:"deleteReply",postKey,commentKey,replyKey,password})
 }
 
 window.editPost=function(key){
-
 const post=allPosts[key]
-const pass=prompt("비밀번호 입력")
-
-if(pass!==post.password && pass!==MASTER_DELETE_CODE){
-alert("비밀번호 틀림")
-return
-}
-
-const newTitle=prompt("새 제목",post.title)
-const newContent=prompt("새 내용",post.content)
-
-update(ref(db,'posts/'+key),{
-title:newTitle,
-content:newContent
-})
-
-}
-
-window.toggleReply=function(cid){
-const box=document.getElementById("replyBox-"+cid)
-box.style.display = box.style.display==="none"?"block":"none"
-}
-
-function formatTime(timestamp){
-const d=new Date(timestamp)
-return `2033.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
-}
-
-function escapeHTML(str){
-if(!str) return ""
-return str
-.replaceAll('&','&amp;')
-.replaceAll('<','&lt;')
-.replaceAll('>','&gt;')
-.replaceAll('"','&quot;')
-.replaceAll("'","&#039;")
+openModal({type:"editPost",key,password:post.password,post})
 }
 
 </script>
