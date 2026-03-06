@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -25,25 +26,8 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 .comment-count{font-size:12px;color:#7dff4f;margin-top:6px;}
 .post-image{max-width:100%;margin-top:10px;border-radius:6px;}
 .comment-image{max-width:200px;margin-top:6px;border-radius:6px;}
-
-.modal{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,.8);
-display:none;
-align-items:center;
-justify-content:center;
-}
-
-.modal-box{
-background:#111611;
-padding:25px;
-border:1px solid #2aff00;
-width:300px;
-}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;}
+.modal-box{background:#111611;padding:25px;border:1px solid #2aff00;width:300px;}
 </style>
 </head>
 
@@ -240,60 +224,26 @@ renderList()
 
 }
 
-window.editPost=function(key){
+window.submitComment=function(postKey){
 
-const post=allPosts[key]
-
-openPasswordModal(function(input){
-
-if(input!==post.password && input!==MASTER_DELETE_CODE){
-alert("비밀번호 틀림")
-return
-}
-
-const container=document.getElementById("postList")
-
-container.innerHTML=`
-
-<div class="card" style="cursor:default">
-
-<h2>게시글 수정</h2>
-
-<select id="e_category">
-<option ${post.category=="공지"?"selected":""}>공지</option>
-<option ${post.category=="잡담"?"selected":""}>잡담</option>
-<option ${post.category=="정보"?"selected":""}>정보</option>
-<option ${post.category=="질문"?"selected":""}>질문</option>
-<option ${post.category=="거래"?"selected":""}>거래</option>
-<option ${post.category=="도움"?"selected":""}>도움</option>
-</select>
-
-<input id="e_title" value="${escapeHTML(post.title)}">
-
-<textarea id="e_content">${escapeHTML(post.content)}</textarea>
-
-<input id="e_image" value="${post.image||""}">
-
-<button class="action-btn" onclick="saveEditPost('${key}')">수정 저장</button>
-<button class="action-btn" onclick="renderDetail('${key}')">취소</button>
-
-</div>
-`
-
+push(ref(db,'posts/'+postKey+'/comments'),{
+nickname:c_nick.value,
+password:c_pass.value,
+content:c_content.value,
+image:c_image.value||"",
+date:Date.now()
 })
 
 }
 
-window.saveEditPost=function(key){
+window.submitReply=function(postKey,commentKey){
 
-update(ref(db,'posts/'+key),{
-category:document.getElementById("e_category").value,
-title:document.getElementById("e_title").value,
-content:document.getElementById("e_content").value,
-image:document.getElementById("e_image").value
+push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
+nickname:document.getElementById("r_nick-"+commentKey).value,
+password:document.getElementById("r_pass-"+commentKey).value,
+content:document.getElementById("r_content-"+commentKey).value,
+date:Date.now()
 })
-
-renderDetail(key)
 
 }
 
@@ -303,12 +253,52 @@ currentPostKey=key
 const post=allPosts[key]
 const container=document.getElementById('postList')
 
+let commentsHTML=""
+
+if(post.comments){
+Object.entries(post.comments).forEach(([cid,c])=>{
+
+commentsHTML+=`
+<div class='comment'>
+<b>${escapeHTML(c.nickname)}</b>
+<div>${escapeHTML(c.content)}</div>
+${c.image?`<img src="${c.image}" class="comment-image">`:""}
+<div class="time">${formatTime(c.date)}</div>
+
+<button class="action-btn" onclick="deleteComment('${key}','${cid}','${c.password}')">삭제</button>
+<button class="action-btn" onclick="toggleReply('${cid}')">답글</button>
+
+<div id="replyBox-${cid}" style="display:none">
+<input id="r_nick-${cid}" placeholder="닉네임">
+<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
+<textarea id="r_content-${cid}" placeholder="답글"></textarea>
+<button class="action-btn" onclick="submitReply('${key}','${cid}')">작성</button>
+</div>
+`
+
+if(c.replies){
+Object.entries(c.replies).forEach(([rid,r])=>{
+commentsHTML+=`
+<div class='reply'>
+<b>${escapeHTML(r.nickname)}</b>
+<div>${escapeHTML(r.content)}</div>
+<div class="time">${formatTime(r.date)}</div>
+<button class="action-btn" onclick="deleteReply('${key}','${cid}','${rid}','${r.password}')">삭제</button>
+</div>
+`
+})
+}
+
+commentsHTML+="</div>"
+
+})
+}
+
 container.innerHTML=`
 
 <div class='card' style="cursor:default">
 
 <button class='action-btn' onclick="renderList()">목록</button>
-<button class='action-btn' onclick="editPost('${key}')">수정</button>
 <button class='action-btn' onclick="deletePost('${key}','${post.password}')">삭제</button>
 
 <h2>${escapeHTML(post.title)}</h2>
@@ -317,6 +307,23 @@ container.innerHTML=`
 ${post.image?`<img src="${post.image}" class="post-image">`:""}
 
 <div class="time">${formatTime(post.date)}</div>
+
+<hr>
+
+<h3>댓글</h3>
+
+${commentsHTML}
+
+<hr>
+
+<h3>댓글 작성</h3>
+
+<input id='c_nick' placeholder='닉네임'>
+<input id='c_pass' type='password' placeholder='비밀번호'>
+<textarea id='c_content' placeholder='댓글'></textarea>
+<input id='c_image' placeholder='이미지 링크'>
+
+<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
 
 </div>
 `
@@ -342,6 +349,47 @@ alert("비밀번호 틀림")
 
 }
 
+window.deleteComment=function(postKey,commentKey,password){
+
+openPasswordModal(function(input){
+
+if(input===password || input===MASTER_DELETE_CODE){
+
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey)).then(()=>{
+renderDetail(postKey)
+})
+
+}else{
+alert("비밀번호 틀림")
+}
+
+})
+
+}
+
+window.deleteReply=function(postKey,commentKey,replyKey,password){
+
+openPasswordModal(function(input){
+
+if(input===password || input===MASTER_DELETE_CODE){
+
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey)).then(()=>{
+renderDetail(postKey)
+})
+
+}else{
+alert("비밀번호 틀림")
+}
+
+})
+
+}
+
+window.toggleReply=function(cid){
+const box=document.getElementById("replyBox-"+cid)
+box.style.display=box.style.display==="none"?"block":"none"
+}
+
 function formatTime(timestamp){
 const d=new Date(timestamp)
 return `2033.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
@@ -360,3 +408,4 @@ return str
 </script>
 </body>
 </html>
+```
