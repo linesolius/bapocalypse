@@ -102,6 +102,7 @@ const postsRef=ref(db,'posts')
 
 let allPosts={}
 let currentPostKey=null
+let currentCategory="all"
 
 function openPasswordModal(callback){
 const modal=document.getElementById("passwordModal")
@@ -134,13 +135,31 @@ if(c.replies) count+=Object.keys(c.replies).length
 return count
 }
 
+window.filterCategory=function(category){
+currentCategory=category
+renderList()
+}
+
 window.renderList=function(){
 
 currentPostKey=null
 const container=document.getElementById('postList')
 container.innerHTML=''
 
-Object.entries(allPosts).sort((a,b)=>b[1].date-a[1].date).forEach(([key,post])=>{
+let postsArray=Object.entries(allPosts)
+
+postsArray=postsArray.filter(([key,post])=>{
+if(currentCategory==="all") return true
+return post.category===currentCategory
+})
+
+postsArray.sort((a,b)=>{
+if(a[1].pinned && !b[1].pinned) return -1
+if(!a[1].pinned && b[1].pinned) return 1
+return b[1].date-a[1].date
+})
+
+postsArray.forEach(([key,post])=>{
 
 const card=document.createElement('div')
 card.className='card'
