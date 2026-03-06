@@ -87,7 +87,7 @@ const ADMIN_CODE="torso1989"
 const MASTER_DELETE_CODE="porygon2007"
 
 const firebaseConfig={
-apiKey:"AIzaSyBAeV6S7u0PCJ_HIeg19IMx3UbAKS2As-k",
+apiKey:"AIzaSy...",
 authDomain:"community-61897.firebaseapp.com",
 databaseURL:"https://community-61897-default-rtdb.firebaseio.com",
 projectId:"community-61897",
@@ -101,24 +101,19 @@ const db=getDatabase(app)
 const postsRef=ref(db,'posts')
 
 let allPosts={}
-let currentCategory='all'
 let currentPostKey=null
+let pwCallback=null
 
 function openPasswordModal(callback){
-const modal=document.getElementById("passwordModal")
-modal.style.display="flex"
+pwCallback=callback
+document.getElementById("passwordModal").style.display="flex"
+}
 
 document.getElementById("pwConfirm").onclick=function(){
 const pw=document.getElementById("pwInput").value
-modal.style.display="none"
 document.getElementById("pwInput").value=""
-callback(pw)
-}
-}
-
-window.filterCategory=function(category){
-currentCategory=category
-renderList()
+document.getElementById("passwordModal").style.display="none"
+if(pwCallback) pwCallback(pw)
 }
 
 onValue(postsRef,(snap)=>{
@@ -129,16 +124,6 @@ renderDetail(currentPostKey)
 renderList()
 }
 })
-
-function countComments(post){
-let count=0
-if(!post.comments) return 0
-Object.values(post.comments).forEach(c=>{
-count++
-if(c.replies) count+=Object.keys(c.replies).length
-})
-return count
-}
 
 window.renderList=function(){
 
@@ -157,7 +142,6 @@ card.innerHTML=`
 <h3>${post.pinned?'📌 ':''}${escapeHTML(post.title)}</h3>
 <div>${escapeHTML(post.content).slice(0,120)}</div>
 <div class="time">${formatTime(post.date)}</div>
-<div class="comment-count">댓글 ${countComments(post)}</div>
 `
 
 container.appendChild(card)
@@ -185,11 +169,8 @@ container.innerHTML=`
 <option>도움</option>
 </select>
 
-<label style="display:block;margin-top:10px">
-<input type="checkbox" id="w_pin"> 공지 상단 고정
-</label>
+<input id="admin_code" placeholder="관리자 코드">
 
-<input id="admin_code" placeholder="관리자 코드 (공지 작성 시 필요)">
 <input id="w_nick" placeholder="닉네임">
 <input id="w_pass" type="password" placeholder="비밀번호">
 <input id="w_title" placeholder="제목">
@@ -218,8 +199,7 @@ nickname:w_nick.value,
 password:w_pass.value,
 title:w_title.value,
 content:w_content.value,
-image:w_image.value||"",
-pinned:w_pin.checked,
+image:w_image.value,
 date:Date.now()
 })
 
@@ -232,50 +212,6 @@ function renderDetail(key){
 currentPostKey=key
 const post=allPosts[key]
 const container=document.getElementById('postList')
-
-let commentsHTML=""
-
-if(post.comments){
-Object.entries(post.comments).forEach(([cid,c])=>{
-
-commentsHTML+=`
-<div class='comment'>
-<b>${escapeHTML(c.nickname)}</b>
-<div>${escapeHTML(c.content)}</div>
-${c.image?`<img src="${c.image}" class="comment-image">`:""}
-<div class="time">${formatTime(c.date)}</div>
-
-<button class="action-btn" onclick="deleteComment('${key}','${cid}','${c.password}')">삭제</button>
-<button class="action-btn" onclick="toggleReply('${cid}')">답글</button>
-
-<div id="replyBox-${cid}" style="display:none">
-
-<input id="r_nick-${cid}" placeholder="닉네임">
-<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
-<textarea id="r_content-${cid}" placeholder="답글"></textarea>
-
-<button class="action-btn" onclick="submitReply('${key}','${cid}')">작성</button>
-
-</div>
-`
-
-if(c.replies){
-Object.entries(c.replies).forEach(([rid,r])=>{
-commentsHTML+=`
-<div class='reply'>
-<b>${escapeHTML(r.nickname)}</b>
-<div>${escapeHTML(r.content)}</div>
-<div class="time">${formatTime(r.date)}</div>
-<button class="action-btn" onclick="deleteReply('${key}','${cid}','${rid}','${r.password}')">삭제</button>
-</div>
-`
-})
-}
-
-commentsHTML+="</div>"
-
-})
-}
 
 container.innerHTML=`
 
@@ -292,48 +228,8 @@ ${post.image?`<img src="${post.image}" class="post-image">`:""}
 
 <div class="time">${formatTime(post.date)}</div>
 
-<hr>
-
-<h3>댓글</h3>
-
-${commentsHTML}
-
-<hr>
-
-<h3>댓글 작성</h3>
-
-<input id='c_nick' placeholder='닉네임'>
-<input id='c_pass' type='password' placeholder='비밀번호'>
-<textarea id='c_content' placeholder='댓글'></textarea>
-<input id='c_image' placeholder='이미지 링크'>
-
-<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
-
 </div>
 `
-
-}
-
-window.submitComment=function(postKey){
-
-push(ref(db,'posts/'+postKey+'/comments'),{
-nickname:c_nick.value,
-password:c_pass.value,
-content:c_content.value,
-image:c_image.value||"",
-date:Date.now()
-})
-
-}
-
-window.submitReply=function(postKey,commentKey){
-
-push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
-nickname:document.getElementById("r_nick-"+commentKey).value,
-password:document.getElementById("r_pass-"+commentKey).value,
-content:document.getElementById("r_content-"+commentKey).value,
-date:Date.now()
-})
 
 }
 
@@ -390,21 +286,36 @@ alert("비밀번호 틀림")
 return
 }
 
-const newTitle=prompt("새 제목",post.title)
-const newContent=prompt("새 내용",post.content)
+const container=document.getElementById('postList')
 
-update(ref(db,'posts/'+key),{
-title:newTitle,
-content:newContent
-})
+container.innerHTML=`
+
+<div class="card">
+
+<h2>게시글 수정</h2>
+
+<input id="edit_title" value="${escapeHTML(post.title)}">
+<textarea id="edit_content">${escapeHTML(post.content)}</textarea>
+<input id="edit_image" value="${post.image||""}">
+
+<button class="action-btn" onclick="saveEdit('${key}')">수정 저장</button>
+<button class="action-btn" onclick="renderDetail('${key}')">취소</button>
+
+</div>
+`
 
 })
 
 }
 
-window.toggleReply=function(cid){
-const box=document.getElementById("replyBox-"+cid)
-box.style.display=box.style.display==="none"?"block":"none"
+window.saveEdit=function(key){
+
+update(ref(db,'posts/'+key),{
+title:document.getElementById("edit_title").value,
+content:document.getElementById("edit_content").value,
+image:document.getElementById("edit_image").value
+})
+
 }
 
 function formatTime(timestamp){
