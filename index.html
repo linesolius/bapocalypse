@@ -302,7 +302,9 @@ container.innerHTML=`
 <button class='action-btn' onclick="deletePost('${key}','${post.password}')">삭제</button>
 
 <h2>${escapeHTML(post.title)}</h2>
-<p>${escapeHTML(post.content)}</p>
+<div class='meta' style='margin-top:10px; font-size:14px; color:#5eff2a;'>작성자: ${escapeHTML(post.nickname)}</div>
+
+<p style="color: white; margin-top: 15px; line-height: 1.6;">${escapeHTML(post.content)}</p>
 
 ${post.image?`<img src="${post.image}" class="post-image">`:""}
 
@@ -329,6 +331,8 @@ ${commentsHTML}
 `
 
 }
+
+// ... 이 아래로는 기존의 window.deletePost, window.deleteComment 등 똑같이 이어집니다!
 
 window.deletePost=function(key,password){
 
