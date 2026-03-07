@@ -171,14 +171,12 @@ container.innerHTML=''
 
 let postsArray=Object.entries(allPosts)
 
-// === 카테고리 필터링 로직 수정 (Pinned 글은 무조건 통과) ===
 postsArray=postsArray.filter(([k,p])=>{
-if(p.pinned === true) return true; // 고정글은 카테고리와 상관없이 노출
+if(p.pinned === true) return true; 
 if(currentCategory==="all") return true
 return p.category===currentCategory
 })
 
-// === 정렬: 고정글 최상단 -> 그 다음 최신순 ===
 postsArray.sort((a,b)=>{
 if(a[1].pinned&&!b[1].pinned)return -1
 if(!a[1].pinned&&b[1].pinned)return 1
@@ -196,7 +194,6 @@ const paginatedPosts = postsArray.slice(startIndex, endIndex);
 paginatedPosts.forEach(([key,post])=>{
 const card=document.createElement('div')
 card.className='card'
-// 고정글일 경우 시각적으로 강조 (테두리 색상 변경 등 선택 가능)
 if(post.pinned) card.style.borderColor = "rgba(42, 255, 0, 0.5)";
 
 card.onclick=()=>renderDetail(key)
@@ -231,13 +228,17 @@ container.innerHTML=`
 <div class="card" style="cursor:default">
 <h2>NEW POST</h2>
 <select id="w_category">
-<option>잡담</option><option>공지</option><option>정보</option>
-<option>질문</option><option>거래</option><option>도움</option>
+<option>잡담</option>
+<option>정보</option>
+<option>질문</option>
+<option>거래</option>
+<option>도움</option>
+<option style="color:#ff5757">공지 (관리자 전용)</option>
 </select>
 <label style="display:block;margin-top:10px; font-size:12px;">
-<input type="checkbox" id="w_pin" style="width:auto; margin-top:0;"> 공지 상단 고정 (관리자 전용)
+<input type="checkbox" id="w_pin" style="width:auto; margin-top:0;"> 상단 고정 (관리자 전용)
 </label>
-<input id="w_admin" placeholder="관리자 코드 (필요 시)">
+<input id="w_admin" placeholder="관리자 코드 (공지 작성 및 고정 시 필요)">
 <input id="w_nick" placeholder="닉네임">
 <input id="w_pass" type="password" placeholder="비밀번호">
 <input id="w_title" placeholder="제목">
@@ -251,11 +252,19 @@ container.innerHTML=`
 
 window.submitPost=function(){
 const isPinned = document.getElementById('w_pin').checked;
-if(isPinned && document.getElementById('w_admin').value!==ADMIN_PIN_CODE){
-    alert("공지 고정 권한이 없습니다."); return;
+const category = document.getElementById('w_category').value;
+const adminInput = document.getElementById('w_admin').value;
+
+// === 보안 검증: 공지 카테고리 또는 고정글 선택 시 관리자 코드 확인 ===
+if(category.includes("공지") || isPinned){
+    if(adminInput !== ADMIN_PIN_CODE){
+        alert("공지 작성 및 고정 기능은 관리자 권한이 필요합니다.");
+        return;
+    }
 }
+
 push(postsRef,{
-category:document.getElementById('w_category').value,
+category: category.includes("공지") ? "공지" : category, // 깔끔하게 "공지"로 저장
 nickname:document.getElementById('w_nick').value,
 password:document.getElementById('w_pass').value,
 title:document.getElementById('w_title').value,
