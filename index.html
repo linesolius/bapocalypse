@@ -27,6 +27,10 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 .comment-image{max-width:200px;margin-top:6px;border-radius:6px;}
 .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;}
 .modal-box{background:#111611;padding:25px;border:1px solid #2aff00;width:300px;}
+
+/* 페이지네이션 버튼 디자인 추가 */
+.pagination {text-align:center; margin-top:20px;}
+.page-info {margin:0 15px; font-weight:bold; color:#9cff57;}
 </style>
 </head>
 
@@ -87,6 +91,10 @@ let allPosts={}
 let currentPostKey=null
 let currentCategory="all"
 
+// 페이지네이션을 위한 변수 추가
+let currentPage = 1;
+const POSTS_PER_PAGE = 10;
+
 function truncateTitle(title){
 if(title.length>10){
 return title.slice(0,10)+"..."
@@ -122,7 +130,14 @@ return count
 
 window.filterCategory=function(category){
 currentCategory=category
+currentPage=1 // 카테고리를 바꿀 때는 항상 1페이지로 리셋
 renderList()
+}
+
+// 페이지 변경 함수 추가
+window.changePage=function(direction){
+  currentPage += direction;
+  renderList();
 }
 
 window.renderList=function(){
@@ -144,7 +159,22 @@ if(!a[1].pinned&&b[1].pinned)return 1
 return b[1].date-a[1].date
 })
 
-postsArray.forEach(([key,post])=>{
+// === 페이지네이션 계산 로직 추가 ===
+const totalPosts = postsArray.length;
+const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE) || 1;
+
+// 혹시 글 삭제 등으로 현재 페이지가 전체 페이지 수를 넘어가면 보정
+if(currentPage > totalPages) currentPage = totalPages;
+
+const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+const endIndex = startIndex + POSTS_PER_PAGE;
+
+// 현재 페이지에 보여줄 10개의 글만 잘라내기
+const paginatedPosts = postsArray.slice(startIndex, endIndex);
+// ====================================
+
+// postsArray 대신 paginatedPosts를 반복문으로 돌립니다
+paginatedPosts.forEach(([key,post])=>{
 
 const card=document.createElement('div')
 card.className='card'
@@ -160,6 +190,24 @@ card.innerHTML=`
 container.appendChild(card)
 
 })
+
+// 하단에 이전/다음 버튼 추가
+if(totalPosts > 0) {
+  const paginationDiv = document.createElement('div');
+  paginationDiv.className = 'pagination';
+  
+  // 이전 버튼 (1페이지면 비활성화)
+  const prevDisabled = currentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+  // 다음 버튼 (마지막 페이지면 비활성화)
+  const nextDisabled = currentPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+
+  paginationDiv.innerHTML = `
+    <button class="action-btn" onclick="changePage(-1)" ${prevDisabled}>&lt; 이전</button>
+    <span class="page-info">${currentPage} / ${totalPages}</span>
+    <button class="action-btn" onclick="changePage(1)" ${nextDisabled}>다음 &gt;</button>
+  `;
+  container.appendChild(paginationDiv);
+}
 
 }
 
@@ -224,9 +272,13 @@ pinned:w_pin.checked,
 date:Date.now()
 })
 
+// 글을 작성하면 최신 글을 볼 수 있게 1페이지로 이동
+currentPage = 1; 
 renderList()
 
 }
+
+// ... 이 아래로는 기존의 window.submitComment 함수 등이 똑같이 이어집니다!
 
 window.submitComment=function(postKey){
 push(ref(db,'posts/'+postKey+'/comments'),{
