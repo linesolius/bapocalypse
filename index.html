@@ -29,7 +29,7 @@ nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px
     margin-top: 15px;
     padding: 15px;
     background: #141a14;
-    border-left: 3px solid #4a634a; /* 댓글 구분선 */
+    border-left: 3px solid #4a634a; 
     border-radius: 4px;
 }
 .comment b { color: #9cff57; font-size: 14px; display: block; margin-bottom: 5px; }
@@ -40,7 +40,7 @@ nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px
     margin-top: 10px;
     padding: 12px;
     background: #0d120d;
-    border-left: 2px solid #334433; /* 답글 구분선 */
+    border-left: 2px solid #334433; 
     border-radius: 4px;
 }
 .reply b { color: #7dff4f; font-size: 13px; }
@@ -170,11 +170,15 @@ const container=document.getElementById('postList')
 container.innerHTML=''
 
 let postsArray=Object.entries(allPosts)
+
+// === 카테고리 필터링 로직 수정 (Pinned 글은 무조건 통과) ===
 postsArray=postsArray.filter(([k,p])=>{
+if(p.pinned === true) return true; // 고정글은 카테고리와 상관없이 노출
 if(currentCategory==="all") return true
 return p.category===currentCategory
 })
 
+// === 정렬: 고정글 최상단 -> 그 다음 최신순 ===
 postsArray.sort((a,b)=>{
 if(a[1].pinned&&!b[1].pinned)return -1
 if(!a[1].pinned&&b[1].pinned)return 1
@@ -192,6 +196,9 @@ const paginatedPosts = postsArray.slice(startIndex, endIndex);
 paginatedPosts.forEach(([key,post])=>{
 const card=document.createElement('div')
 card.className='card'
+// 고정글일 경우 시각적으로 강조 (테두리 색상 변경 등 선택 가능)
+if(post.pinned) card.style.borderColor = "rgba(42, 255, 0, 0.5)";
+
 card.onclick=()=>renderDetail(key)
 
 card.innerHTML=`
@@ -248,12 +255,12 @@ if(isPinned && document.getElementById('w_admin').value!==ADMIN_PIN_CODE){
     alert("공지 고정 권한이 없습니다."); return;
 }
 push(postsRef,{
-category:w_category.value,
-nickname:w_nick.value,
-password:w_pass.value,
-title:w_title.value,
-content:w_content.value,
-image:w_image.value||"",
+category:document.getElementById('w_category').value,
+nickname:document.getElementById('w_nick').value,
+password:document.getElementById('w_pass').value,
+title:document.getElementById('w_title').value,
+content:document.getElementById('w_content').value,
+image:document.getElementById('w_image').value||"",
 pinned:isPinned,
 date:Date.now()
 })
@@ -261,12 +268,14 @@ currentPage = 1; renderList()
 }
 
 window.submitComment=function(postKey){
-if(!c_nick.value || !c_content.value){ alert("내용을 입력해주세요"); return; }
+const nick = document.getElementById('c_nick').value;
+const content = document.getElementById('c_content').value;
+if(!nick || !content){ alert("내용을 입력해주세요"); return; }
 push(ref(db,'posts/'+postKey+'/comments'),{
-nickname:c_nick.value,
-password:c_pass.value,
-content:c_content.value,
-image:c_image.value||"",
+nickname:nick,
+password:document.getElementById('c_pass').value,
+content:content,
+image:document.getElementById('c_image').value||"",
 date:Date.now()
 })
 }
