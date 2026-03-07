@@ -6,31 +6,60 @@
 <title>Nuclear Community</title>
 
 <style>
+/* 1. 전체 베이스: 눈이 편한 다크 모드 */
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
-body{background:#0a0d0a;color:#9cff57}
+body{background:#0a0d0a;color:#b8c7b0; line-height:1.5;} 
 header{background:#111411;padding:20px 40px;border-bottom:1px solid #2aff00}
 .topbar{display:flex;justify-content:space-between;align-items:center}
 nav{margin-top:10px}
 nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin-right:6px;cursor:pointer}
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
-.card{background:#111611;padding:20px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.2);cursor:pointer}
-.meta{font-size:12px;color:#5eff2a;margin-bottom:10px}
-textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:8px}
-.action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:6px 4px 6px 0;cursor:pointer}
-.comment{margin-top:15px;padding:10px;background:#0f180f;border:1px solid rgba(0,255,0,.2)}
-.reply{margin-left:25px;margin-top:10px;padding:10px;background:#0c140c;border:1px solid rgba(0,255,0,.2)}
-hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
-.time{font-size:11px;color:#6cff3c;margin-top:5px;}
-.comment-count{font-size:12px;color:#7dff4f;margin-top:6px;}
-.post-image{max-width:100%;margin-top:10px;border-radius:6px;}
-.comment-image{max-width:200px;margin-top:6px;border-radius:6px;}
-.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;}
-.modal-box{background:#111611;padding:25px;border:1px solid #2aff00;width:300px;}
 
-/* 페이지네이션 버튼 디자인 추가 */
+/* 2. 게시글 카드 및 제목 */
+.card{background:#111611;padding:25px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.15);cursor:pointer}
+.meta{font-size:12px;color:#78a378;margin-bottom:10px}
+.card h2 { color: #8fbc8f; margin-bottom: 15px; font-size: 1.5rem; } 
+.card h3 { color: #a3d9a5; font-size: 1.2rem; } 
+
+/* 3. 댓글 가독성 개선 섹션 */
+.comment-section-title { margin: 30px 0 15px; color: #8fbc8f; font-size: 1.1rem; border-bottom: 1px solid rgba(0,255,0,0.1); padding-bottom: 5px;}
+
+.comment {
+    margin-top: 15px;
+    padding: 15px;
+    background: #141a14;
+    border-left: 3px solid #4a634a; /* 댓글 구분선 */
+    border-radius: 4px;
+}
+.comment b { color: #9cff57; font-size: 14px; display: block; margin-bottom: 5px; }
+.comment .comment-text { color: #d1d1d1; font-size: 14px; white-space: pre-wrap; margin-bottom: 8px; }
+
+.reply {
+    margin-left: 20px;
+    margin-top: 10px;
+    padding: 12px;
+    background: #0d120d;
+    border-left: 2px solid #334433; /* 답글 구분선 */
+    border-radius: 4px;
+}
+.reply b { color: #7dff4f; font-size: 13px; }
+.reply .reply-text { color: #b0b0b0; font-size: 13px; margin-top: 4px; }
+
+/* 4. 기타 UI 요소 */
+textarea,input,select{width:100%;margin-top:10px;background:#0f140f;border:1px solid #2aff00;color:#9cff57;padding:10px}
+.action-btn{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px 12px;margin:8px 4px 0 0;cursor:pointer; font-size: 12px;}
+hr{margin:25px 0;border:0;border-top:1px solid rgba(0,255,0,.15)}
+.time{font-size:11px;color:#5a6b57;margin-top:5px;}
+.comment-count{font-size:12px;color:#7dff4f;margin-top:6px;}
+.post-image{max-width:100%;margin-top:15px;border-radius:6px; border: 1px solid #222;}
+.comment-image{max-width:200px;margin-top:8px;border-radius:6px;}
+
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:999;}
+.modal-box{background:#111611;padding:25px;border:1px solid #2aff00;width:300px;}
 .pagination {text-align:center; margin-top:20px;}
 .page-info {margin:0 15px; font-weight:bold; color:#9cff57;}
+footer{text-align:center; padding:40px; color:#444; font-size:12px;}
 </style>
 </head>
 
@@ -62,11 +91,11 @@ hr{margin:20px 0;border:0;border-top:1px solid rgba(0,255,0,.3)}
 <h3>비밀번호 입력</h3>
 <input type="password" id="pwInput">
 <button class="action-btn" id="pwConfirm">확인</button>
+<button class="action-btn" onclick="document.getElementById('passwordModal').style.display='none'">취소</button>
 </div>
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -90,15 +119,11 @@ const postsRef=ref(db,'posts')
 let allPosts={}
 let currentPostKey=null
 let currentCategory="all"
-
-// 페이지네이션을 위한 변수 추가
 let currentPage = 1;
 const POSTS_PER_PAGE = 10;
 
 function truncateTitle(title){
-if(title.length>10){
-return title.slice(0,10)+"..."
-}
+if(title.length>15){ return title.slice(0,15)+"..." }
 return title
 }
 
@@ -130,24 +155,21 @@ return count
 
 window.filterCategory=function(category){
 currentCategory=category
-currentPage=1 // 카테고리를 바꿀 때는 항상 1페이지로 리셋
+currentPage=1 
 renderList()
 }
 
-// 페이지 변경 함수 추가
 window.changePage=function(direction){
   currentPage += direction;
   renderList();
 }
 
 window.renderList=function(){
-
 currentPostKey=null
 const container=document.getElementById('postList')
 container.innerHTML=''
 
 let postsArray=Object.entries(allPosts)
-
 postsArray=postsArray.filter(([k,p])=>{
 if(currentCategory==="all") return true
 return p.category===currentCategory
@@ -159,23 +181,15 @@ if(!a[1].pinned&&b[1].pinned)return 1
 return b[1].date-a[1].date
 })
 
-// === 페이지네이션 계산 로직 추가 ===
 const totalPosts = postsArray.length;
 const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE) || 1;
-
-// 혹시 글 삭제 등으로 현재 페이지가 전체 페이지 수를 넘어가면 보정
 if(currentPage > totalPages) currentPage = totalPages;
 
 const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 const endIndex = startIndex + POSTS_PER_PAGE;
-
-// 현재 페이지에 보여줄 10개의 글만 잘라내기
 const paginatedPosts = postsArray.slice(startIndex, endIndex);
-// ====================================
 
-// postsArray 대신 paginatedPosts를 반복문으로 돌립니다
 paginatedPosts.forEach(([key,post])=>{
-
 const card=document.createElement('div')
 card.className='card'
 card.onclick=()=>renderDetail(key)
@@ -184,83 +198,55 @@ card.innerHTML=`
 <div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
 <h3>${post.pinned?'📌 ':''}${escapeHTML(truncateTitle(post.title))}</h3>
 <div class="time">${formatTime(post.date)}</div>
-<div class="comment-count">댓글 ${countComments(post)}</div>
+<div class="comment-count">💬 ${countComments(post)}</div>
 `
-
 container.appendChild(card)
-
 })
 
-// 하단에 이전/다음 버튼 추가
 if(totalPosts > 0) {
   const paginationDiv = document.createElement('div');
   paginationDiv.className = 'pagination';
-  
-  // 이전 버튼 (1페이지면 비활성화)
-  const prevDisabled = currentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
-  // 다음 버튼 (마지막 페이지면 비활성화)
-  const nextDisabled = currentPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+  const prevDisabled = currentPage === 1 ? 'disabled style="opacity:0.3; cursor:default;"' : '';
+  const nextDisabled = currentPage === totalPages ? 'disabled style="opacity:0.3; cursor:default;"' : '';
 
   paginationDiv.innerHTML = `
-    <button class="action-btn" onclick="changePage(-1)" ${prevDisabled}>&lt; 이전</button>
+    <button class="action-btn" onclick="changePage(-1)" ${prevDisabled}>&lt; PREV</button>
     <span class="page-info">${currentPage} / ${totalPages}</span>
-    <button class="action-btn" onclick="changePage(1)" ${nextDisabled}>다음 &gt;</button>
+    <button class="action-btn" onclick="changePage(1)" ${nextDisabled}>NEXT &gt;</button>
   `;
   container.appendChild(paginationDiv);
 }
-
 }
 
-
 window.renderWrite=function(){
-
 const container=document.getElementById('postList')
-
 container.innerHTML=`
-
 <div class="card" style="cursor:default">
-
-<h2>글 작성</h2>
-
+<h2>NEW POST</h2>
 <select id="w_category">
-<option>공지</option>
-<option>잡담</option>
-<option>정보</option>
-<option>질문</option>
-<option>거래</option>
-<option>도움</option>
+<option>잡담</option><option>공지</option><option>정보</option>
+<option>질문</option><option>거래</option><option>도움</option>
 </select>
-
-<label style="display:block;margin-top:10px">
-<input type="checkbox" id="w_pin"> 공지 상단 고정
+<label style="display:block;margin-top:10px; font-size:12px;">
+<input type="checkbox" id="w_pin" style="width:auto; margin-top:0;"> 공지 상단 고정 (관리자 전용)
 </label>
-
-<input id="w_admin" placeholder="관리자 코드 (공지 고정용)">
-
+<input id="w_admin" placeholder="관리자 코드 (필요 시)">
 <input id="w_nick" placeholder="닉네임">
 <input id="w_pass" type="password" placeholder="비밀번호">
 <input id="w_title" placeholder="제목">
-
-<textarea id="w_content" placeholder="내용"></textarea>
-
-<input id="w_image" placeholder="이미지 링크">
-
+<textarea id="w_content" placeholder="내용을 입력하세요..." style="height:200px"></textarea>
+<input id="w_image" placeholder="이미지 URL (선택사항)">
 <button class="action-btn" onclick="submitPost()">게시하기</button>
 <button class="action-btn" onclick="renderList()">취소</button>
-
 </div>
 `
 }
 
 window.submitPost=function(){
-
-if(w_pin.checked){
-if(w_admin.value!==ADMIN_PIN_CODE){
-alert("공지 고정은 관리자 코드가 필요합니다")
-return
+const isPinned = document.getElementById('w_pin').checked;
+if(isPinned && document.getElementById('w_admin').value!==ADMIN_PIN_CODE){
+    alert("공지 고정 권한이 없습니다."); return;
 }
-}
-
 push(postsRef,{
 category:w_category.value,
 nickname:w_nick.value,
@@ -268,19 +254,14 @@ password:w_pass.value,
 title:w_title.value,
 content:w_content.value,
 image:w_image.value||"",
-pinned:w_pin.checked,
+pinned:isPinned,
 date:Date.now()
 })
-
-// 글을 작성하면 최신 글을 볼 수 있게 1페이지로 이동
-currentPage = 1; 
-renderList()
-
+currentPage = 1; renderList()
 }
 
-// ... 이 아래로는 기존의 window.submitComment 함수 등이 똑같이 이어집니다!
-
 window.submitComment=function(postKey){
+if(!c_nick.value || !c_content.value){ alert("내용을 입력해주세요"); return; }
 push(ref(db,'posts/'+postKey+'/comments'),{
 nickname:c_nick.value,
 password:c_pass.value,
@@ -291,154 +272,108 @@ date:Date.now()
 }
 
 window.submitReply=function(postKey,commentKey){
+const nick = document.getElementById("r_nick-"+commentKey).value;
+const content = document.getElementById("r_content-"+commentKey).value;
+if(!nick || !content){ alert("내용을 입력해주세요"); return; }
 push(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies'),{
-nickname:document.getElementById("r_nick-"+commentKey).value,
+nickname:nick,
 password:document.getElementById("r_pass-"+commentKey).value,
-content:document.getElementById("r_content-"+commentKey).value,
+content:content,
 date:Date.now()
 })
 }
 
-function renderDetail(key){
-
+window.renderDetail = function(key){
 currentPostKey=key
 const post=allPosts[key]
 const container=document.getElementById('postList')
-
 let commentsHTML=""
 
 if(post.comments){
 Object.entries(post.comments).forEach(([cid,c])=>{
-
 commentsHTML+=`
 <div class='comment'>
 <b>${escapeHTML(c.nickname)}</b>
-<div>${escapeHTML(c.content)}</div>
+<div class="comment-text">${escapeHTML(c.content)}</div>
 ${c.image?`<img src="${c.image}" class="comment-image">`:""}
 <div class="time">${formatTime(c.date)}</div>
+<button class="action-btn" onclick="toggleReply('${cid}')">답글달기</button>
+<button class="action-btn" style="opacity:0.6" onclick="deleteComment('${key}','${cid}','${c.password}')">삭제</button>
 
-<button class="action-btn" onclick="deleteComment('${key}','${cid}','${c.password}')">삭제</button>
-<button class="action-btn" onclick="toggleReply('${cid}')">답글</button>
-
-<div id="replyBox-${cid}" style="display:none">
-<input id="r_nick-${cid}" placeholder="닉네임">
-<input id="r_pass-${cid}" type="password" placeholder="비밀번호">
-<textarea id="r_content-${cid}" placeholder="답글"></textarea>
-<button class="action-btn" onclick="submitReply('${key}','${cid}')">작성</button>
+<div id="replyBox-${cid}" style="display:none; margin-top:15px; border-top:1px dashed #222; padding-top:10px;">
+<input id="r_nick-${cid}" placeholder="닉네임" style="width:48%">
+<input id="r_pass-${cid}" type="password" placeholder="비밀번호" style="width:48%">
+<textarea id="r_content-${cid}" placeholder="답글 내용을 입력하세요"></textarea>
+<button class="action-btn" onclick="submitReply('${key}','${cid}')">답글등록</button>
 </div>
 `
-
 if(c.replies){
 Object.entries(c.replies).forEach(([rid,r])=>{
 commentsHTML+=`
 <div class='reply'>
-<b>${escapeHTML(r.nickname)}</b>
-<div>${escapeHTML(r.content)}</div>
+<b>└ ${escapeHTML(r.nickname)}</b>
+<div class="reply-text">${escapeHTML(r.content)}</div>
 <div class="time">${formatTime(r.date)}</div>
-<button class="action-btn" onclick="deleteReply('${key}','${cid}','${rid}','${r.password}')">삭제</button>
+<button class="action-btn" style="opacity:0.5; padding:2px 6px;" onclick="deleteReply('${key}','${cid}','${rid}','${r.password}')">삭제</button>
 </div>
 `
 })
 }
-
 commentsHTML+="</div>"
-
 })
 }
 
 container.innerHTML=`
-
 <div class='card' style="cursor:default">
-
-<button class='action-btn' onclick="renderList()">목록</button>
-<button class='action-btn' onclick="deletePost('${key}','${post.password}')">삭제</button>
-
+<div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <button class='action-btn' onclick="renderList()">← 목록으로</button>
+    <button class='action-btn' style="border-color:#555; color:#888" onclick="deletePost('${key}','${post.password}')">글 삭제</button>
+</div>
+<hr>
 <h2>${escapeHTML(post.title)}</h2>
-<div class='meta' style='margin-top:10px; font-size:14px; color:#5eff2a;'>작성자: ${escapeHTML(post.nickname)}</div>
-
-<p style="color: white; margin-top: 15px; line-height: 1.6;">${escapeHTML(post.content)}</p>
-
+<div class='meta'>작성자: ${escapeHTML(post.nickname)} | ${formatTime(post.date)}</div>
+<p style="color: #d1d1d1; margin: 25px 0; line-height: 1.8; font-size:15px; white-space:pre-wrap;">${escapeHTML(post.content)}</p>
 ${post.image?`<img src="${post.image}" class="post-image">`:""}
 
-<div class="time">${formatTime(post.date)}</div>
-
-<hr>
-
-<h3>댓글</h3>
-
+<h3 class="comment-section-title">Comments</h3>
 ${commentsHTML}
 
-<hr>
-
-<h3>댓글 작성</h3>
-
-<input id='c_nick' placeholder='닉네임'>
-<input id='c_pass' type='password' placeholder='비밀번호'>
-<textarea id='c_content' placeholder='댓글'></textarea>
-<input id='c_image' placeholder='이미지 링크'>
-
-<button class='action-btn' onclick="submitComment('${key}')">댓글 작성</button>
-
+<div style="background:#0a0d0a; padding:15px; border-radius:4px; margin-top:30px; border:1px solid #1a2a1a;">
+    <h3 style="font-size:14px; margin-bottom:10px;">댓글 쓰기</h3>
+    <div style="display:flex; justify-content:space-between;">
+        <input id='c_nick' placeholder='닉네임' style="width:49%">
+        <input id='c_pass' type='password' placeholder='비밀번호' style="width:49%">
+    </div>
+    <textarea id='c_content' placeholder='댓글을 남겨주세요...' style="height:80px"></textarea>
+    <input id='c_image' placeholder='이미지 URL (선택)'>
+    <button class='action-btn' style="width:100%; padding:10px; margin-top:10px; background:#1a2a1a;" onclick="submitComment('${key}')">댓글 등록</button>
+</div>
 </div>
 `
-
 }
-
-// ... 이 아래로는 기존의 window.deletePost, window.deleteComment 등 똑같이 이어집니다!
 
 window.deletePost=function(key,password){
-
 openPasswordModal(function(input){
-
 if(input===password || input===MASTER_DELETE_CODE){
-
-remove(ref(db,'posts/'+key)).then(()=>{
-currentPostKey=null
-renderList()
+remove(ref(db,'posts/'+key)).then(()=>{ currentPostKey=null; renderList(); })
+}else{ alert("비밀번호가 틀립니다"); }
 })
-
-}else{
-alert("비밀번호 틀림")
-}
-
-})
-
 }
 
 window.deleteComment=function(postKey,commentKey,password){
-
 openPasswordModal(function(input){
-
 if(input===password || input===MASTER_DELETE_CODE){
-
-remove(ref(db,'posts/'+postKey+'/comments/'+commentKey)).then(()=>{
-renderDetail(postKey)
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey)).then(()=>{ renderDetail(postKey) })
+}else{ alert("비밀번호가 틀립니다"); }
 })
-
-}else{
-alert("비밀번호 틀림")
-}
-
-})
-
 }
 
 window.deleteReply=function(postKey,commentKey,replyKey,password){
-
 openPasswordModal(function(input){
-
 if(input===password || input===MASTER_DELETE_CODE){
-
-remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey)).then(()=>{
-renderDetail(postKey)
+remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey)).then(()=>{ renderDetail(postKey) })
+}else{ alert("비밀번호가 틀립니다"); }
 })
-
-}else{
-alert("비밀번호 틀림")
-}
-
-})
-
 }
 
 window.toggleReply=function(cid){
@@ -448,19 +383,14 @@ box.style.display=box.style.display==="none"?"block":"none"
 
 function formatTime(timestamp){
 const d=new Date(timestamp)
-return `2033.${d.getMonth()+1}.${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
+const pad = (n) => n.toString().padStart(2, '0');
+return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function escapeHTML(str){
 if(!str) return ""
-return str
-.replaceAll('&','&amp;')
-.replaceAll('<','&lt;')
-.replaceAll('>','&gt;')
-.replaceAll('"','&quot;')
-.replaceAll("'","&#039;")
+return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")
 }
-
 </script>
 </body>
 </html>
