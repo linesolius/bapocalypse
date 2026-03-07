@@ -87,6 +87,13 @@ let allPosts={}
 let currentPostKey=null
 let currentCategory="all"
 
+function truncateTitle(title){
+if(title.length>10){
+return title.slice(0,10)+"..."
+}
+return title
+}
+
 function openPasswordModal(callback){
 const modal=document.getElementById("passwordModal")
 modal.style.display="flex"
@@ -145,8 +152,7 @@ card.onclick=()=>renderDetail(key)
 
 card.innerHTML=`
 <div class='meta'>[${post.category}] ${escapeHTML(post.nickname)}</div>
-<h3>${post.pinned?'📌 ':''}${escapeHTML(post.title)}</h3>
-<div>${escapeHTML(post.content).slice(0,120)}</div>
+<h3>${post.pinned?'📌 ':''}${escapeHTML(truncateTitle(post.title))}</h3>
 <div class="time">${formatTime(post.date)}</div>
 <div class="comment-count">댓글 ${countComments(post)}</div>
 `
@@ -156,6 +162,7 @@ container.appendChild(card)
 })
 
 }
+
 
 window.renderWrite=function(){
 
