@@ -16,15 +16,14 @@ nav button{background:#132013;border:1px solid #2aff00;color:#9cff57;padding:6px
 .write-btn{background:#1a2a1a;border:1px solid #2aff00;color:#9cff57;padding:8px 14px;cursor:pointer}
 .container{max-width:1000px;margin:40px auto;padding:0 20px}
 
-/* 2. 게시글 카드 및 제목 */
+/* 2. 게시글 카드 및 제목 (눈이 편한 녹색조) */
 .card{background:#111611;padding:25px;margin-bottom:20px;border:1px solid rgba(0,255,0,0.15);cursor:pointer}
 .meta{font-size:12px;color:#78a378;margin-bottom:10px}
 .card h2 { color: #8fbc8f; margin-bottom: 15px; font-size: 1.5rem; } 
 .card h3 { color: #a3d9a5; font-size: 1.2rem; } 
 
-/* 3. 댓글 가독성 개선 섹션 */
+/* 3. 댓글 가독성 개선 */
 .comment-section-title { margin: 30px 0 15px; color: #8fbc8f; font-size: 1.1rem; border-bottom: 1px solid rgba(0,255,0,0.1); padding-bottom: 5px;}
-
 .comment {
     margin-top: 15px;
     padding: 15px;
@@ -171,12 +170,14 @@ container.innerHTML=''
 
 let postsArray=Object.entries(allPosts)
 
+// Pinned 글은 모든 필터에서 상단 노출
 postsArray=postsArray.filter(([k,p])=>{
 if(p.pinned === true) return true; 
 if(currentCategory==="all") return true
 return p.category===currentCategory
 })
 
+// 정렬: 고정글 최상단 -> 최신순
 postsArray.sort((a,b)=>{
 if(a[1].pinned&&!b[1].pinned)return -1
 if(!a[1].pinned&&b[1].pinned)return 1
@@ -228,17 +229,14 @@ container.innerHTML=`
 <div class="card" style="cursor:default">
 <h2>NEW POST</h2>
 <select id="w_category">
-<option>잡담</option>
-<option>정보</option>
-<option>질문</option>
-<option>거래</option>
-<option>도움</option>
+<option>잡담</option><option>정보</option><option>질문</option>
+<option>거래</option><option>도움</option>
 <option style="color:#ff5757">공지 (관리자 전용)</option>
 </select>
 <label style="display:block;margin-top:10px; font-size:12px;">
 <input type="checkbox" id="w_pin" style="width:auto; margin-top:0;"> 상단 고정 (관리자 전용)
 </label>
-<input id="w_admin" placeholder="관리자 코드 (공지 작성 및 고정 시 필요)">
+<input id="w_admin" placeholder="관리자 코드 (공지/고정 시 필요)">
 <input id="w_nick" placeholder="닉네임">
 <input id="w_pass" type="password" placeholder="비밀번호">
 <input id="w_title" placeholder="제목">
@@ -255,16 +253,16 @@ const isPinned = document.getElementById('w_pin').checked;
 const category = document.getElementById('w_category').value;
 const adminInput = document.getElementById('w_admin').value;
 
-// === 보안 검증: 공지 카테고리 또는 고정글 선택 시 관리자 코드 확인 ===
+// 보안 검증: 공지 또는 고정글은 관리자 코드 필요
 if(category.includes("공지") || isPinned){
     if(adminInput !== ADMIN_PIN_CODE){
-        alert("공지 작성 및 고정 기능은 관리자 권한이 필요합니다.");
+        alert("공지 작성 및 고정은 관리자 전용입니다.");
         return;
     }
 }
 
 push(postsRef,{
-category: category.includes("공지") ? "공지" : category, // 깔끔하게 "공지"로 저장
+category: category.includes("공지") ? "공지" : category,
 nickname:document.getElementById('w_nick').value,
 password:document.getElementById('w_pass').value,
 title:document.getElementById('w_title').value,
@@ -374,7 +372,7 @@ window.deletePost=function(key,password){
 openPasswordModal(function(input){
 if(input===password || input===MASTER_DELETE_CODE){
 remove(ref(db,'posts/'+key)).then(()=>{ currentPostKey=null; renderList(); })
-}else{ alert("비밀번호가 틀립니다"); }
+}else{ alert("비밀번호 불일치"); }
 })
 }
 
@@ -382,7 +380,7 @@ window.deleteComment=function(postKey,commentKey,password){
 openPasswordModal(function(input){
 if(input===password || input===MASTER_DELETE_CODE){
 remove(ref(db,'posts/'+postKey+'/comments/'+commentKey)).then(()=>{ renderDetail(postKey) })
-}else{ alert("비밀번호가 틀립니다"); }
+}else{ alert("비밀번호 불일치"); }
 })
 }
 
@@ -390,7 +388,7 @@ window.deleteReply=function(postKey,commentKey,replyKey,password){
 openPasswordModal(function(input){
 if(input===password || input===MASTER_DELETE_CODE){
 remove(ref(db,'posts/'+postKey+'/comments/'+commentKey+'/replies/'+replyKey)).then(()=>{ renderDetail(postKey) })
-}else{ alert("비밀번호가 틀립니다"); }
+}else{ alert("비밀번호 불일치"); }
 })
 }
 
@@ -399,10 +397,12 @@ const box=document.getElementById("replyBox-"+cid)
 box.style.display=box.style.display==="none"?"block":"none"
 }
 
+// 년도를 2033으로 고정한 시간 변환 함수
 function formatTime(timestamp){
 const d=new Date(timestamp)
 const pad = (n) => n.toString().padStart(2, '0');
-return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+// 요청하신 대로 년도를 2033으로 표시합니다.
+return `2033.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function escapeHTML(str){
