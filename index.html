@@ -51,6 +51,7 @@ hr{margin:25px 0;border:0;border-top:1px solid rgba(0,255,0,.15)}
 .pagination {text-align:center; margin-top:20px;}
 .page-info {margin:0 15px; font-weight:bold; color:#9cff57;}
 footer{text-align:center; padding:40px; color:#444; font-size:12px;}
+.admin-trigger{cursor: pointer; user-select: none;}
 </style>
 </head>
 
@@ -75,7 +76,9 @@ footer{text-align:center; padding:40px; color:#444; font-size:12px;}
 
 <div class="container" id="postList"></div>
 
-<footer>© 2033 Nuclear Community</footer>
+<footer>
+    © <span id="adminClick" class="admin-trigger">2033</span> Nuclear Community
+</footer>
 
 <div id="passwordModal" class="modal">
 <div class="modal-box">
@@ -114,17 +117,38 @@ let currentPage = 1;
 let isAdminView = false;
 const POSTS_PER_PAGE = 10;
 
-// 비밀 단축키 감지: Ctrl + Shift + A
+// 관리자 모드 토글 함수
+function toggleAdminMode() {
+    openPasswordModal("ADMIN ACCESS", (pw)=>{
+        if(pw === ADMIN_PIN_CODE){
+            isAdminView = !isAdminView;
+            alert(isAdminView ? "관리자 모드 활성화: 수정 신청 내용 프리뷰 및 승인 권한이 부여됩니다." : "관리자 모드 해제");
+            renderList();
+        } else { alert("ACCESS DENIED"); }
+    });
+}
+
+// 1. 단축키 감지 (PC용)
 window.addEventListener('keydown', function(e) {
     if (e.ctrlKey && e.shiftKey && e.code === 'KeyA') {
         e.preventDefault();
-        openPasswordModal("ADMIN ACCESS", (pw)=>{
-            if(pw === ADMIN_PIN_CODE){
-                isAdminView = !isAdminView;
-                alert(isAdminView ? "관리자 모드 활성화: 수정 신청된 내용이 미리 보입니다." : "관리자 모드 해제");
-                renderList();
-            } else { alert("ACCESS DENIED"); }
-        });
+        toggleAdminMode();
+    }
+});
+
+// 2. 5번 클릭 감지 (모바일용)
+let clickCount = 0;
+let clickTimer = null;
+document.getElementById('adminClick').addEventListener('click', function() {
+    clickCount++;
+    clearTimeout(clickTimer);
+    
+    // 3초 안에 5번을 눌러야 함
+    clickTimer = setTimeout(() => { clickCount = 0; }, 3000);
+    
+    if (clickCount >= 5) {
+        clickCount = 0;
+        toggleAdminMode();
     }
 });
 
@@ -207,7 +231,6 @@ const card=document.createElement('div')
 card.className='card'
 if(post.pinned) card.style.borderColor = "rgba(42, 255, 0, 0.5)";
 
-// 핵심: 관리자 모드일 경우 수정 대기중인 데이터(pendingUpdate)를 우선 참조
 const displayData = (isAdminView && post.pendingUpdate) ? post.pendingUpdate : post;
 
 card.onclick=()=>renderDetail(key)
@@ -286,13 +309,11 @@ alert(shouldApprove ? "게시되었습니다." : "등록되었습니다. 승인 
 currentPage = 1; renderList()
 }
 
-// 수정 화면
 window.editPost=function(key){
     const post = allPosts[key];
     openPasswordModal("수정 비밀번호 확인", (pw)=>{
         if(pw === post.password || pw === MASTER_DELETE_CODE){
             const container=document.getElementById('postList');
-            // 관리자면 대기내역 수정, 아니면 현재내역 기준 수정
             const data = post.pendingUpdate || post;
             container.innerHTML=`
             <div class="card" style="cursor:default">
@@ -319,7 +340,6 @@ window.editPost=function(key){
     });
 }
 
-// 수정 처리
 window.updatePost=function(key){
     const post = allPosts[key];
     const isPinned = document.getElementById('e_pin').checked;
@@ -347,7 +367,6 @@ window.updatePost=function(key){
     }
 }
 
-// 수정 승인 (관리자 전용)
 window.approveUpdate = function(key){
     const post = allPosts[key];
     if(!post.pendingUpdate) return;
@@ -357,7 +376,6 @@ window.approveUpdate = function(key){
     });
 }
 
-// 수정 반려 (대기 데이터 삭제)
 window.rejectUpdate = function(key){
     if(confirm("수정 신청을 반려하시겠습니까? 신청된 내용은 삭제됩니다.")){
         update(ref(db, 'posts/'+key), { pendingUpdate: null }).then(()=>{
@@ -372,7 +390,6 @@ currentPostKey=key
 const post=allPosts[key]
 const container=document.getElementById('postList')
 
-// 핵심: 관리자 모드일 경우 수정 대기내용을 보여줌
 const isPreview = isAdminView && post.pendingUpdate;
 const displayData = isPreview ? post.pendingUpdate : post;
 
